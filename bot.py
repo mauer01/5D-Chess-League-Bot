@@ -45,7 +45,7 @@ ROLES_CONFIG_FILE = 'elo_roles.csv'
 
 # Initialize bot
 intents = discord.Intents.all()
-bot = commands.Bot(command_prefix='$', intents=intents)
+bot = commands.Bot(command_prefix='$', intents=intents, help_command=None)
 
 
 # Database functions
@@ -530,6 +530,79 @@ async def show_leaderboard(ctx, *args):
 
     await ctx.send(embed=embed)
 
+@bot.command(name='help')
+async def show_help(ctx):
+    """Show all available commands and how to use them"""
+    allowed, error_msg = check_channel(ctx)
+    if not allowed:
+        await ctx.send(error_msg)
+        return
+
+    embed = discord.Embed(
+        title="🏆 ELO Bot Help 🏆",
+        description="Here are all the available commands:",
+        color=0x00ff00
+    )
+
+    # Basic commands
+    embed.add_field(
+        name="🔹 Registration",
+        value="`$register` - Register yourself in the ELO system",
+        inline=False
+    )
+
+    # Match reporting
+    embed.add_field(
+        name="🔹 Match Reporting",
+        value=(
+            "`$rep [w/l/d] @opponent` - Report a match result\n"
+            "  • `w` for win, `l` for loss, `d` for draw\n"
+            "  • Example: `$rep w @Player2`\n"
+            "`$cancel [w/l/d] @opponent` - Cancel a pending match report",
+        ),
+        inline=False
+    )
+
+    # Stats commands
+    embed.add_field(
+        name="🔹 Statistics",
+        value=(
+            "`$stats` - Show your stats\n"
+            "`$stats @player` - Show another player's stats\n"
+            "`$leaderboard` - Show top 10 players\n"
+            "`$leaderboard [number]` - Show top X players (max 25)\n"
+            "`$leaderboard [role name]` - Show leaderboard for a specific role\n"
+            "`$leaderboard [number] [role name]` - Combined options"
+        ),
+        inline=False
+    )
+
+    # Admin commands
+    if ctx.author.guild_permissions.manage_roles:
+        embed.add_field(
+            name="🔹 Admin Commands",
+            value=(
+                "`$update_roles` - Update all players' roles based on ELO\n"
+                "  • Requires a properly configured 'elo_roles.csv' file"
+            ),
+            inline=False
+        )
+
+    # Additional info
+    embed.add_field(
+        name="ℹ️ How It Works",
+        value=(
+            "1. Both players must `$register` first\n"
+            "2. One player reports the match with `$rep`\n"
+            "3. The other player confirms by reporting the opposite result\n"
+            "4. ELO is updated automatically after confirmation"
+        ),
+        inline=False
+    )
+
+    embed.set_footer(text=f"Bot is restricted to #{bot.get_channel(ALLOWED_CHANNEL_ID).name}")
+
+    await ctx.send(embed=embed)
 
 @bot.command(name='update_roles')
 @commands.has_permissions(manage_roles=True)
