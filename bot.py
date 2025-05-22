@@ -1,3 +1,4 @@
+import shlex
 import discord
 from discord.ext import commands, tasks
 import sqlite3
@@ -1256,9 +1257,6 @@ async def show_help(ctx):
     )
 
     await ctx.send(embed=embed)
-
-
-from fuzzywuzzy import fuzz
 
 
 class PairingsPaginator(discord.ui.View):
