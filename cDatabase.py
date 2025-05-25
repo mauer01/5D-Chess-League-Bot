@@ -2,10 +2,11 @@ import asyncio, csv, os, sqlite3
 from datetime import datetime, timedelta
 
 ROLES_CONFIG_FILE = "elo_roles.csv"
+sqliteFile = "elo_bot.db"
 
 
 def init_db():
-    conn = sqlite3.connect("elo_bot.db")
+    conn = sqlite3.connect(sqliteFile)
     c = conn.cursor()
 
     c.execute(
@@ -144,7 +145,8 @@ def init_db():
 
 
 def delete_pending_rep(rep_id):
-    conn = sqlite3.connect("elo_bot.db")
+
+    conn = sqlite3.connect(sqliteFile)
     c = conn.cursor()
     c.execute("DELETE FROM pending_reps WHERE id=?", (rep_id,))
     conn.commit()
@@ -152,7 +154,7 @@ def delete_pending_rep(rep_id):
 
 
 def update_player_stats(player_id, elo, wins=0, losses=0, draws=0):
-    conn = sqlite3.connect("elo_bot.db")
+    conn = sqlite3.connect(sqliteFile)
     c = conn.cursor()
     c.execute(
         """UPDATE players
@@ -168,7 +170,7 @@ def update_player_stats(player_id, elo, wins=0, losses=0, draws=0):
 
 
 def get_player_data(player_id):
-    conn = sqlite3.connect("elo_bot.db")
+    conn = sqlite3.connect(sqliteFile)
     c = conn.cursor()
     c.execute("SELECT * FROM players WHERE id=?", (player_id,))
     player = c.fetchone()
@@ -179,7 +181,7 @@ def get_player_data(player_id):
 async def clean_old_pending_matches():
     while True:
         try:
-            conn = sqlite3.connect("elo_bot.db")
+            conn = sqlite3.connect(sqliteFile)
             c = conn.cursor()
             cutoff_time = datetime.now() - timedelta(minutes=30)
             cutoff_str = cutoff_time.strftime("%Y-%m-%d %H:%M:%S")
@@ -197,7 +199,7 @@ async def clean_old_pending_matches():
 async def generate_pairings(ctx, season_number):
     """Generate pairings for the season"""
     try:
-        conn = sqlite3.connect("elo_bot.db")
+        conn = sqlite3.connect(sqliteFile)
         c = conn.cursor()
 
         c.execute(
@@ -300,7 +302,7 @@ async def generate_pairings(ctx, season_number):
 
 
 def add_pending_rep(reporter_id, opponent_id, reporter_result):
-    conn = sqlite3.connect("elo_bot.db")
+    conn = sqlite3.connect(sqliteFile)
     c = conn.cursor()
     c.execute(
         """INSERT INTO pending_reps (reporter_id, opponent_id, reporter_result)
@@ -312,7 +314,7 @@ def add_pending_rep(reporter_id, opponent_id, reporter_result):
 
 
 def get_pending_rep(reporter_id, opponent_id):
-    conn = sqlite3.connect("elo_bot.db")
+    conn = sqlite3.connect(sqliteFile)
     c = conn.cursor()
     cutoff_time = datetime.now() - timedelta(minutes=30)
     cutoff_str = cutoff_time.strftime("%Y-%m-%d %H:%M:%S")
