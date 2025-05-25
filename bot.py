@@ -35,7 +35,8 @@ except Exception as e:
 
 K_FACTOR = 25
 INITIAL_ELO = 1380
-ROLES_CONFIG_FILE = "elo_roles.csv"
+# ROLES_CONFIG_FILE = "elo_roles.csv"
+# sqliteFile = "elo_bot.db"
 
 
 intents = discord.Intents.all()
@@ -113,7 +114,7 @@ async def update_player_roles(ctx):
 
         role_ranges.sort(key=lambda x: x["min"], reverse=True)
 
-        conn = sqlite3.connect("elo_bot.db")
+        conn = sqlite3.connect(sqliteFile)
         c = conn.cursor()
         c.execute("SELECT id, elo FROM players WHERE signed_up=1")
         players = c.fetchall()
@@ -213,7 +214,7 @@ async def register_player(ctx):
         await ctx.send(f"{ctx.author.mention}, you're already registered!")
         return
 
-    conn = sqlite3.connect("elo_bot.db")
+    conn = sqlite3.connect(sqliteFile)
     c = conn.cursor()
     c.execute("INSERT INTO players (id, elo) VALUES (?, ?)", (player_id, INITIAL_ELO))
     conn.commit()
@@ -249,7 +250,7 @@ async def report_match(
         await ctx.send("❌ Both players must be registered!")
         return
 
-    conn = sqlite3.connect("elo_bot.db")
+    conn = sqlite3.connect(sqliteFile)
     try:
         c = conn.cursor()
         season_active = c.execute(
@@ -557,7 +558,7 @@ async def show_leaderboard(ctx, *args):
             else:
                 role_name += " " + arg
 
-    conn = sqlite3.connect("elo_bot.db")
+    conn = sqlite3.connect(sqliteFile)
     c = conn.cursor()
 
     query = "SELECT id, elo, wins, losses, draws FROM players"
@@ -735,7 +736,7 @@ async def signup_player(ctx):
         await ctx.send(f"You need to register first with `$register`!")
         return
 
-    conn = sqlite3.connect("elo_bot.db")
+    conn = sqlite3.connect(sqliteFile)
     c = conn.cursor()
 
     c.execute("SELECT active FROM seasons ORDER BY season_number DESC LIMIT 1")
@@ -762,7 +763,7 @@ async def start_season(ctx):
         return
 
     try:
-        conn = sqlite3.connect("elo_bot.db")
+        conn = sqlite3.connect(sqliteFile)
         c = conn.cursor()
 
         c.execute(
@@ -805,7 +806,7 @@ async def end_season(ctx):
         return
 
     try:
-        conn = sqlite3.connect("elo_bot.db")
+        conn = sqlite3.connect(sqliteFile)
         c = conn.cursor()
 
         c.execute("SELECT season_number FROM seasons WHERE active=1")
@@ -994,7 +995,7 @@ async def show_pairings(ctx, *, args: str = None):
 
     conn = None
     try:
-        conn = sqlite3.connect("elo_bot.db")
+        conn = sqlite3.connect(sqliteFile)
         c = conn.cursor()
 
         c.execute("SELECT season_number FROM seasons WHERE active=1")
