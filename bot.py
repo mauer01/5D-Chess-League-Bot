@@ -262,22 +262,7 @@ async def report_match(
                 await ctx.send("❌ Invalid game number. Use 1 or 2.")
                 return
 
-            c.execute(
-                """SELECT id, player1_id, player2_id, result1, result2
-                         FROM pairings
-                         WHERE ((player1_id = :playerA AND player2_id = :playerB)
-                            OR (player1_id = :playerB AND player2_id = :playerA))
-                            AND season_number = (SELECT season_number FROM seasons WHERE active = 1)
-                            AND game_number = :gameNumber""",
-                (
-                    {
-                        "playerA": ctx.author.id,
-                        "playerB": opponent.id,
-                        "gameNumber": game_number,
-                    }
-                ),
-            )
-            pairing = c.fetchone()
+            pairing = get_specific_pairing(ctx, opponent, game_number, c)
 
             if not pairing:
                 await ctx.send("❌ No valid season pairing found!")

@@ -351,3 +351,26 @@ def update_season_game(match, game, result):
 
 def update_match_history(match, game, result, season, pgn=""):
     print("not yet")
+
+
+def get_specific_pairing(ctx, opponent, game_number, c: sqlite3.Cursor = None):
+    if c == None:
+        conn = sqlite3.connect(sqliteFile)
+        c = conn.cursor()
+    c.execute(
+        """SELECT id, player1_id, player2_id, result1, result2
+                         FROM pairings
+                         WHERE ((player1_id = :playerA AND player2_id = :playerB)
+                            OR (player1_id = :playerB AND player2_id = :playerA))
+                            AND season_number = (SELECT season_number FROM seasons WHERE active = 1)
+                            AND game_number = :gameNumber""",
+        {
+            "playerA": ctx.author.id,
+            "playerB": opponent.id,
+            "gameNumber": game_number,
+        },
+    )
+    pairing = c.fetchone()
+    if conn:
+        conn.close()
+    return pairing
