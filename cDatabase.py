@@ -330,3 +330,24 @@ def get_pending_rep(reporter_id, opponent_id):
     rep = c.fetchone()
     conn.close()
     return rep
+
+
+def update_season_game(match, game, result):
+    conn = sqlite3.connect(sqliteFile)
+    if game not in [1, 2]:
+        return "", "wrong game number"
+    c = conn.cursor()
+    c.execute(
+        """
+            UPDATE pairings
+            SET {game} = :new_result
+            WHERE id = :pairing_id
+        """,
+        {"new_result": result, "pairing_id": match},
+    )
+    conn.commit()
+    conn.close()
+
+
+def update_match_history(match, game, result, season, pgn=""):
+    print("not yet")
