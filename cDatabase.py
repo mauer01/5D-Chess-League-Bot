@@ -354,6 +354,7 @@ def update_match_history(match, game, result, season, pgn=""):
 
 
 def get_specific_pairing(ctx, opponent, game_number, c: sqlite3.Cursor = None):
+    conn = False
     if c == None:
         conn = sqlite3.connect(sqliteFile)
         c = conn.cursor()

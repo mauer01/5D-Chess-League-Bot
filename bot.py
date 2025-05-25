@@ -229,7 +229,6 @@ async def register_player(ctx):
 async def report_match(
     ctx, result: str, opponent: discord.Member, game_number: int = None
 ):
-    """Report or confirm match results and update all relevant data"""
     allowed, error_msg = check_channel(ctx)
     if not allowed:
         await ctx.send(error_msg)
@@ -268,7 +267,7 @@ async def report_match(
                 await ctx.send("❌ No valid season pairing found!")
                 return
 
-            pairing_id, p1_id, p2_id = pairing
+            pairing_id, p1_id, p2_id, _, _ = pairing
 
             is_player1 = ctx.author.id == p1_id
             result_value = (
@@ -386,64 +385,6 @@ async def report_match(
                     f"⚠️ Reported game {game_number}! {opponent.mention} confirm with:\n"
                     f"`$rep {'l' if result == 'w' else 'w' if result == 'l' else 'd'} "
                     f"@{ctx.author.name} {game_number}`"
-                )
-
-        else:
-            pending_rep = get_pending_rep(opponent.id, ctx.author.id)
-
-            if pending_rep:
-                pending_result = pending_rep[3]
-                valid_confirmation = (
-                    (result == "w" and pending_result == "l")
-                    or (result == "l" and pending_result == "w")
-                    or (result == "d" and pending_result == "d")
-                )
-
-                if valid_confirmation:
-                    reporter_elo = reporter_data[1]
-                    opponent_elo = opponent_data[1]
-
-                    if result == "w":
-                        new_reporter_elo, new_opponent_elo = update_elo(
-                            reporter_elo, opponent_elo
-                        )
-                        rep_wins, rep_losses, rep_draws = 1, 0, 0
-                        opp_wins, opp_losses, opp_draws = 0, 1, 0
-                    elif result == "l":
-                        new_opponent_elo, new_reporter_elo = update_elo(
-                            opponent_elo, reporter_elo
-                        )
-                        rep_wins, rep_losses, rep_draws = 0, 1, 0
-                        opp_wins, opp_losses, opp_draws = 1, 0, 0
-                    else:
-                        new_reporter_elo, new_opponent_elo = update_elo(
-                            reporter_elo, opponent_elo, draw=True
-                        )
-                        rep_wins, rep_losses, rep_draws = 0, 0, 1
-                        opp_wins, opp_losses, opp_draws = 0, 0, 1
-
-                    update_player_stats(
-                        ctx.author.id, new_reporter_elo, rep_wins, rep_losses, rep_draws
-                    )
-                    update_player_stats(
-                        opponent.id, new_opponent_elo, opp_wins, opp_losses, opp_draws
-                    )
-                    delete_pending_rep(pending_rep[0])
-
-                    await ctx.send(
-                        f"✅ Match confirmed!\n"
-                        f"{ctx.author.mention}: {rep_wins}W {rep_losses}L {rep_draws}D | ELO: {reporter_elo:.0f}→{new_reporter_elo:.0f}\n"
-                        f"{opponent.mention}: {opp_wins}W {opp_losses}L {opp_draws}D | ELO: {opponent_elo:.0f}→{new_opponent_elo:.0f}"
-                    )
-                else:
-                    await ctx.send(
-                        "❌ Results don't match! Report the opposite result."
-                    )
-            else:
-                add_pending_rep(ctx.author.id, opponent.id, result)
-                await ctx.send(
-                    f"📩 Match reported! {opponent.mention} confirm with:\n"
-                    f"`$rep {'l' if result == 'w' else 'w' if result == 'l' else 'd'} @{ctx.author.name}`"
                 )
 
     except Exception as e:
