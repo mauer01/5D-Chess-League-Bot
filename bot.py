@@ -264,11 +264,17 @@ async def report_match(
             c.execute(
                 """SELECT id, player1_id, player2_id, result1, result2
                          FROM pairings
-                         WHERE ((player1_id = ? AND player2_id = ?)
-                             OR (player1_id = ? AND player2_id = ?))
-                           AND season_number = (SELECT season_number FROM seasons WHERE active = 1)
-                           AND game_number = ?""",
-                (ctx.author.id, opponent.id, opponent.id, ctx.author.id, game_number),
+                         WHERE ((player1_id = :playerA AND player2_id = :playerB)
+                            OR (player1_id = :playerB AND player2_id = :playerA))
+                            AND season_number = (SELECT season_number FROM seasons WHERE active = 1)
+                            AND game_number = :gameNumber""",
+                (
+                    {
+                        "playerA": ctx.author.id,
+                        "playerB": opponent.id,
+                        "gameNumber": game_number,
+                    }
+                ),
             )
             pairing = c.fetchone()
 
@@ -276,7 +282,7 @@ async def report_match(
                 await ctx.send("❌ No valid season pairing found!")
                 return
 
-            pairing_id, p1_id, p2_id, existing_result1, existing_result2 = pairing
+            pairing_id, p1_id, p2_id = pairing
 
             is_player1 = ctx.author.id == p1_id
             result_value = (
