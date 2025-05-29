@@ -312,10 +312,9 @@ async def report_match(ctx, result: str, opponent: discord.Member, game_number: 
                         """,
                         (p1_id, p2_id),
                     )
-                    game_results = c.fetchone()
+                    game1, game2 = c.fetchone()
 
-                    if len(game_results) == 2:
-                        game1, game2 = game_results
+                    if game1 is not None and game2 is not None:
                         p1_elo = get_player_data(p1_id)[1]
                         p2_elo = get_player_data(p2_id)[1]
 
