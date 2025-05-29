@@ -226,10 +226,11 @@ async def register_player(ctx):
 
 
 @bot.command(name="rep")
-async def report_match(
-    ctx, result: str, opponent: discord.Member, game_number: int = None
-):
+async def report_match(ctx, result: str, opponent: discord.Member, game_number: int):
     allowed, error_msg = check_channel(ctx)
+    if game_number not in [1, 2]:
+        await ctx.send("❌ Invalid game number. pls provide 1 or 2 after")
+        return
     if not allowed:
         await ctx.send(error_msg)
         return
@@ -256,13 +257,10 @@ async def report_match(
             "SELECT active FROM seasons ORDER BY season_number DESC LIMIT 1"
         ).fetchone()[0]
 
-        if season_active and game_number is not None:
-            if game_number not in [1, 2]:
-                await ctx.send("❌ Invalid game number. Use 1 or 2.")
-                return
+        if season_active:
 
-            pairing = get_specific_pairing(ctx, opponent, game_number, c)
-
+            pairing = get_specific_pairing(ctx, opponent, c)
+            print(pairing)
             if not pairing:
                 await ctx.send("❌ No valid season pairing found!")
                 return
@@ -282,7 +280,8 @@ async def report_match(
                 """SELECT reporter_id, result
                          FROM pending_reps
                          WHERE pairing_id = ?
-                           AND game_number = ?""",
+                         AND game_number = ?
+                """,
                 (pairing_id, game_number),
             )
             existing_rep = c.fetchone()
@@ -300,8 +299,8 @@ async def report_match(
                     c.execute(
                         f"""UPDATE pairings 
                                  SET result{game_number}=?
-                                 WHERE id=? AND game_number=?""",
-                        (result_value, pairing_id, game_number),
+                                 WHERE id=?""",
+                        (result_value, pairing_id),
                     )
                     conn.commit()
 
@@ -310,16 +309,13 @@ async def report_match(
                                  FROM pairings
                                  WHERE (player1_id = ? AND player2_id = ?)
                                    AND season_number = (SELECT season_number FROM seasons WHERE active = 1)
-                                 ORDER BY game_number""",
+                        """,
                         (p1_id, p2_id),
                     )
-                    game_results = c.fetchall()
+                    game_results = c.fetchone()
 
-                    if len(game_results) == 2 and all(
-                        r is not None for res in game_results for r in res
-                    ):
-                        game1, game2 = game_results[0][0], game_results[1][0]
-
+                    if len(game_results) == 2:
+                        game1, game2 = game_results
                         p1_elo = get_player_data(p1_id)[1]
                         p2_elo = get_player_data(p2_id)[1]
 

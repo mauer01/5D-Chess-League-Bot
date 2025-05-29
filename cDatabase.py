@@ -197,7 +197,6 @@ async def clean_old_pending_matches():
 
 
 async def generate_pairings(ctx, season_number):
-    """Generate pairings for the season"""
     try:
         conn = sqlite3.connect(sqliteFile)
         c = conn.cursor()
@@ -353,7 +352,8 @@ def update_match_history(match, game, result, season, pgn=""):
     print("not yet")
 
 
-def get_specific_pairing(ctx, opponent, game_number, c: sqlite3.Cursor = None):
+def get_specific_pairing(ctx, opponent, c: sqlite3.Cursor = None):
+
     conn = False
     if c == None:
         conn = sqlite3.connect(sqliteFile)
@@ -364,11 +364,10 @@ def get_specific_pairing(ctx, opponent, game_number, c: sqlite3.Cursor = None):
                          WHERE ((player1_id = :playerA AND player2_id = :playerB)
                             OR (player1_id = :playerB AND player2_id = :playerA))
                             AND season_number = (SELECT season_number FROM seasons WHERE active = 1)
-                            AND game_number = :gameNumber""",
+                            """,
         {
             "playerA": ctx.author.id,
             "playerB": opponent.id,
-            "gameNumber": game_number,
         },
     )
     pairing = c.fetchone()
