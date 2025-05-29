@@ -174,3 +174,4 @@ cython_debug/
 .pypirc
 elo_bot.db
 config.csv
+matchhistory.db
