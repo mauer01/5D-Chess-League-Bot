@@ -194,13 +194,13 @@ async def update_player_roles(ctx):
                 if roles_to_remove:
                     await member.remove_roles(*roles_to_remove)
 
-                except discord.Forbidden:
-                    await ctx.send("❌ Bot doesn't have permission to manage roles!")
-                    return
-                except discord.HTTPException as e:
-                    print(f"HTTP Error updating {player_id}: {e}")
-                except Exception as e:
-                    print(f"Error updating {player_id}: {e}")
+            except discord.Forbidden:
+                await ctx.send("❌ Bot doesn't have permission to manage roles!")
+                return
+            except discord.HTTPException as e:
+                print(f"HTTP Error updating {player_id}: {e}")
+            except Exception as e:
+                print(f"Error updating {player_id}: {e}")
 
         await progress_msg.delete()
         await ctx.send(
