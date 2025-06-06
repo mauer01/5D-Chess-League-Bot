@@ -320,16 +320,21 @@ async def report_match(ctx, result: str, opponent: discord.Member, game_number: 
 
                         if game1 == 0.5:
                             g1_p1, g1_p2 = update_elo(p1_elo, p2_elo, draw=True)
+                        elif game1 == 1.0:
+                            g1_p1, g1_p2 = update_elo(p1_elo, p2_elo)
                         else:
-                            g1_p1, g1_p2 = update_elo(p1_elo, p2_elo, game1 == 1.0)
+                            g1_p2, g1_p1 = update_elo(p2_elo, p1_elo)
+
 
                         if game2 == 0.5:
                             g2_p1, g2_p2 = update_elo(p1_elo, p2_elo, draw=True)
-                        else:
+                        elif game2 == 1.0:
                             g2_p1, g2_p2 = update_elo(p1_elo, p2_elo, game2 == 1.0)
+                        else:
+                            g2_p2, g2_p1 = update_elo(p2_elo, p1_elo, game2 == 1.0)
 
-                        final_p1 = (g1_p1 + g2_p1) / 2
-                        final_p2 = (g1_p2 + g2_p2) / 2
+                        final_p1 = (g1_p1 + g2_p1)
+                        final_p2 = (g1_p2 + g2_p2)
 
                         p1_wins = sum(
                             1
@@ -789,9 +794,8 @@ async def show_help(ctx):
     embed.add_field(
         name="🔹 Match Reporting",
         value=(
-            "`$rep [w/l/d] @opponent` - Report a match result\n"
-            "   • For season matches: Records result in pairings\n"
-            "   • For normal matches: Requires opponent confirmation\n"
+            "`$rep [w/l/d] @opponent game_number` - Report a match result\n"
+            "   • For league matches: Records result in pairings\n"
             "`$cancel [w/l/d] @opponent` - Cancel a pending match report"
         ),
         inline=False,
