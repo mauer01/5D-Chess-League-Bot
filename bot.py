@@ -183,6 +183,11 @@ async def update_player_roles(ctx):
 
         for i, (player_id, elo) in enumerate(n_players):
             try:
+
+                member = await ctx.guild.fetch_member(player_id)
+                if not member:
+                    continue
+
                 roles_to_remove = []
                 for role_range in role_ranges:
                     existing_role = discord.utils.get(
@@ -206,7 +211,7 @@ async def update_player_roles(ctx):
 
         await progress_msg.delete()
         await ctx.send(
-            f"✅ Successfully updated roles for {updated_count}/{len(players)} signed up players!"
+            f"✅ Successfully updated roles for {updated_count}/{len(players) + len(n_players)} signed up players!"
         )
 
     except FileNotFoundError as e:
