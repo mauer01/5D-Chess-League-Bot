@@ -175,6 +175,33 @@ async def update_player_roles(ctx):
             except Exception as e:
                 print(f"Error updating {player_id}: {e}")
 
+        conn = sqlite3.connect(sqliteFile)
+        c = conn.cursor()
+        c.execute("SELECT id, elo FROM players WHERE signed_up=0")
+        players = c.fetchall()
+        conn.close()
+
+        for i, (player_id, elo) in enumerate(players):
+            try:
+                roles_to_remove = []
+                for role_range in role_ranges:
+                    existing_role = discord.utils.get(
+                        member.roles, name=role_range["name"]
+                    )
+                    if existing_role:
+                        roles_to_remove.append(existing_role)
+
+                if roles_to_remove:
+                    await member.remove_roles(*roles_to_remove)
+
+                except discord.Forbidden:
+                    await ctx.send("❌ Bot doesn't have permission to manage roles!")
+                    return
+                except discord.HTTPException as e:
+                    print(f"HTTP Error updating {player_id}: {e}")
+                except Exception as e:
+                    print(f"Error updating {player_id}: {e}")
+
         await progress_msg.delete()
         await ctx.send(
             f"✅ Successfully updated roles for {updated_count}/{len(players)} signed up players!"
