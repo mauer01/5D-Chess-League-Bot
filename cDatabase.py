@@ -53,6 +53,8 @@ def init_db():
                      INTEGER,
                      result
                      TEXT,
+                     game_number
+                     INTEGER,
                      timestamp
                      DATETIME
                      DEFAULT
