@@ -407,7 +407,8 @@ async def cancel_pending_match(ctx, result: str, opponent: discord.Member):
         await ctx.send("You can't cancel a match with yourself!")
         return
 
-    pending_rep = get_pending_rep(ctx.author.id, opponent.id)
+    pairing = get_specific_pairing(ctx, opponent)
+    pending_rep = get_pending_rep(ctx.author.id, pairing["id"])
 
     if not pending_rep:
         await ctx.send(f"No pending match found against {opponent.mention} to cancel!")
