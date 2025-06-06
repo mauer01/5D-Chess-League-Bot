@@ -310,7 +310,7 @@ def add_pending_rep(reporter_id, opponent_id, reporter_result):
     conn.close()
 
 
-def get_pending_rep(reporter_id, opponent_id):
+def get_pending_rep(reporter_id, pairing_id):
     conn = sqlite3.connect(sqliteFile)
     c = conn.cursor()
     cutoff_time = datetime.now() - timedelta(minutes=30)
@@ -319,10 +319,10 @@ def get_pending_rep(reporter_id, opponent_id):
         """SELECT *
                  FROM pending_reps
                  WHERE reporter_id = ?
-                   AND opponent_id = ?
+                   AND pairing_id = ?
                    AND timestamp >= ?
                  ORDER BY timestamp DESC LIMIT 1""",
-        (reporter_id, opponent_id, cutoff_str),
+        (reporter_id, pairing_id, cutoff_str),
     )
     rep = c.fetchone()
     conn.close()
@@ -369,6 +369,7 @@ def get_specific_pairing(ctx, opponent, c: sqlite3.Cursor = None):
         },
     )
     pairing = c.fetchone()
+
     if conn:
         conn.close()
     return pairing
