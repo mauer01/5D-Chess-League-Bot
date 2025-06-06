@@ -178,10 +178,10 @@ async def update_player_roles(ctx):
         conn = sqlite3.connect(sqliteFile)
         c = conn.cursor()
         c.execute("SELECT id, elo FROM players WHERE signed_up=0")
-        players = c.fetchall()
+        n_players = c.fetchall()
         conn.close()
 
-        for i, (player_id, elo) in enumerate(players):
+        for i, (player_id, elo) in enumerate(n_players):
             try:
                 roles_to_remove = []
                 for role_range in role_ranges:
@@ -193,6 +193,8 @@ async def update_player_roles(ctx):
 
                 if roles_to_remove:
                     await member.remove_roles(*roles_to_remove)
+
+                updated_count += 1
 
             except discord.Forbidden:
                 await ctx.send("❌ Bot doesn't have permission to manage roles!")
