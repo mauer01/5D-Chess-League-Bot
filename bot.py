@@ -205,8 +205,8 @@ async def update_player_roles(ctx):
 
                 updated_count += 1
 
-                if (i + 1) % max(5, len(players) // 10) == 0:
-                    progress = int((i + 1) / len(players) * 100)
+                if (i + 1) % max(5, len(n_players) // 10) == 0:
+                    progress = int((i + 1) / len(n_players) * 100)
                     await progress_msg.edit(content=f"Removing roles... {progress}%")
 
             except discord.Forbidden:
