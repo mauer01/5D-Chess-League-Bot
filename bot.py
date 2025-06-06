@@ -167,6 +167,8 @@ async def update_player_roles(ctx):
                     progress = int((i + 1) / len(players) * 100)
                     await progress_msg.edit(content=f"Updating roles... {progress}%")
 
+
+
             except discord.Forbidden:
                 await ctx.send("❌ Bot doesn't have permission to manage roles!")
                 return
@@ -174,6 +176,8 @@ async def update_player_roles(ctx):
                 print(f"HTTP Error updating {player_id}: {e}")
             except Exception as e:
                 print(f"Error updating {player_id}: {e}")
+
+        await progress_msg.edit(content=f"Updating Roles ... 100%")
 
         conn = sqlite3.connect(sqliteFile)
         c = conn.cursor()
@@ -201,6 +205,10 @@ async def update_player_roles(ctx):
 
                 updated_count += 1
 
+                if (i + 1) % max(5, len(players) // 10) == 0:
+                    progress = int((i + 1) / len(players) * 100)
+                    await progress_msg.edit(content=f"Removing roles... {progress}%")
+
             except discord.Forbidden:
                 await ctx.send("❌ Bot doesn't have permission to manage roles!")
                 return
@@ -211,7 +219,7 @@ async def update_player_roles(ctx):
 
         await progress_msg.delete()
         await ctx.send(
-            f"✅ Successfully updated roles for {updated_count}/{len(players) + len(n_players)} signed up players!"
+            f"✅ Successfully updated roles for {updated_count}/{len(players) + len(n_players)} registered players!"
         )
 
     except FileNotFoundError as e:
