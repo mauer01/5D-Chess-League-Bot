@@ -34,12 +34,6 @@ except Exception as e:
     exit(1)
 
 
-K_FACTOR = 25
-INITIAL_ELO = 1380
-# ROLES_CONFIG_FILE = "elo_roles.csv"
-# sqliteFile = "elo_bot.db"
-
-
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="$", intents=intents, help_command=None)
 
