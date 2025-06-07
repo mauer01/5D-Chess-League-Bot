@@ -6,6 +6,7 @@ sqliteFile = "elo_bot.db"
 
 
 def init_db():
+    missing, extra = check_database_structure(sqliteFile)
     conn = sqlite3.connect(sqliteFile)
     c = conn.cursor()
 
@@ -352,7 +353,7 @@ def update_match_history(match, game, result, season, pgn=""):
     print("not yet")
 
 
-def get_specific_pairing(ctx, opponent, c: sqlite3.Cursor = None):
+def get_specific_pairing(ctx, opponent, c=None):
 
     conn = False
     if c == None:
@@ -375,3 +376,84 @@ def get_specific_pairing(ctx, opponent, c: sqlite3.Cursor = None):
     if conn:
         conn.close()
     return pairing
+
+
+def check_database_structure(db_file):
+
+    expected_structure = {
+        "pairings": [
+            "id",
+            "player1_id",
+            "player2_id",
+            "result1",
+            "result2",
+            "season_number",
+            "group_name",
+        ],
+        "pending_reps": [
+            "id",
+            "pairing_id",
+            "reporter_id",
+            "result",
+            "game_number",
+            "timestamp",
+        ],
+        "players": ["id", "elo", "wins", "losses", "draws", "signed_up"],
+        "seasons": ["season_number", "active"],
+        "match_history": [
+            "match",
+            "whiteplayer",
+            "blackplayer",
+            "colorwon",
+            "season",
+            "league",
+        ],
+        "elo_history": ["id", "player_id", "elo_change", "timestamp"],
+    }
+
+    try:
+        conn = sqlite3.connect(db_file)
+        c = conn.cursor()
+
+        # Get list of actual tables
+        c.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        actual_tables = {row[0] for row in c.fetchall()}
+        missing = []
+        for table, expected_columns in expected_structure.items():
+            if table not in actual_tables:
+                print(f"Missing table: {table}")
+                missing.append({"type": "table", "table": table})
+                for col in expected_columns:
+                    missing.append({"type": "column", "table": table, "column": col})
+                continue
+
+            c.execute(f"PRAGMA table_info({table});")
+            actual_columns = {row[1] for row in c.fetchall()}
+            for col in expected_columns:
+                if col not in actual_columns:
+                    print(f"Missing column in {table}: {col}")
+                    missing.append({"type": "column", "table": table, "column": col})
+        extra = []
+        for table in actual_tables:
+            if table not in expected_structure:
+                extra.append({"type": "table", "table": table})
+                print(f"Extra table: {table}")
+                c.execute(f"PRAGMA table_info({table});")
+                actual_columns = {row[1] for row in c.fetchall()}
+                for col in actual_columns:
+                    extra.append({"type": "column", "table": table, "column": col})
+            elif table in expected_structure:
+                expected_columns = expected_structure[table]
+                c.execute(f"PRAGMA table_info({table});")
+                actual_columns = {row[1] for row in c.fetchall()}
+                for col in actual_columns:
+                    if col not in expected_columns:
+                        print(f"Extra column in {table}: {col}")
+                        extra.append({"type": "column", "table": table, "column": col})
+
+        return missing, extra
+    except sqlite3.Error as e:
+        print(f"SQLite error: {e}")
+        return False
+    finally:
+        conn.close()
