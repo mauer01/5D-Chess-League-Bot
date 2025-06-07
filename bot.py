@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 import sqlite3, math, csv, os, shlex
+from constants import ROLES_CONFIG_FILE, SQLITEFILE
 from cDatabase import *
 
 
@@ -114,7 +115,7 @@ async def update_player_roles(ctx):
 
         role_ranges.sort(key=lambda x: x["min"], reverse=True)
 
-        conn = sqlite3.connect(sqliteFile)
+        conn = sqlite3.connect(SQLITEFILE)
         c = conn.cursor()
         c.execute("SELECT id, elo FROM players WHERE signed_up=1")
         players = c.fetchall()
@@ -167,8 +168,6 @@ async def update_player_roles(ctx):
                     progress = int((i + 1) / len(players) * 100)
                     await progress_msg.edit(content=f"Updating roles... {progress}%")
 
-
-
             except discord.Forbidden:
                 await ctx.send("❌ Bot doesn't have permission to manage roles!")
                 return
@@ -179,7 +178,7 @@ async def update_player_roles(ctx):
 
         await progress_msg.edit(content=f"Updating Roles ... 100%")
 
-        conn = sqlite3.connect(sqliteFile)
+        conn = sqlite3.connect(SQLITEFILE)
         c = conn.cursor()
         c.execute("SELECT id, elo FROM players WHERE signed_up=0")
         n_players = c.fetchall()
@@ -256,7 +255,7 @@ async def register_player(ctx):
         await ctx.send(f"{ctx.author.mention}, you're already registered!")
         return
 
-    conn = sqlite3.connect(sqliteFile)
+    conn = sqlite3.connect(SQLITEFILE)
     c = conn.cursor()
     c.execute("INSERT INTO players (id, elo) VALUES (?, ?)", (player_id, INITIAL_ELO))
     conn.commit()
@@ -292,7 +291,7 @@ async def report_match(ctx, result: str, opponent: discord.Member, game_number: 
         await ctx.send("❌ Both players must be registered!")
         return
 
-    conn = sqlite3.connect(sqliteFile)
+    conn = sqlite3.connect(SQLITEFILE)
     try:
         c = conn.cursor()
         season_active = c.execute(
@@ -367,7 +366,6 @@ async def report_match(ctx, result: str, opponent: discord.Member, game_number: 
                         else:
                             g1_p2, g1_p1 = update_elo(p2_elo, p1_elo)
 
-
                         if game2 == 0.5:
                             g2_p1, g2_p2 = update_elo(p1_elo, p2_elo, draw=True)
                         elif game2 == 1.0:
@@ -375,8 +373,8 @@ async def report_match(ctx, result: str, opponent: discord.Member, game_number: 
                         else:
                             g2_p2, g2_p1 = update_elo(p2_elo, p1_elo, game2 == 1.0)
 
-                        final_p1 = (g1_p1 + g2_p1)/2
-                        final_p2 = (g1_p2 + g2_p2)/2
+                        final_p1 = (g1_p1 + g2_p1) / 2
+                        final_p2 = (g1_p2 + g2_p2) / 2
 
                         p1_wins = sum(
                             1
@@ -527,7 +525,7 @@ async def show_leaderboard(ctx, *args):
             else:
                 role_name += " " + arg
 
-    conn = sqlite3.connect(sqliteFile)
+    conn = sqlite3.connect(SQLITEFILE)
     c = conn.cursor()
 
     query = "SELECT id, elo, wins, losses, draws FROM players"
@@ -705,7 +703,7 @@ async def signup_player(ctx):
         await ctx.send(f"You need to register first with `$register`!")
         return
 
-    conn = sqlite3.connect(sqliteFile)
+    conn = sqlite3.connect(SQLITEFILE)
     c = conn.cursor()
 
     c.execute("SELECT active FROM seasons ORDER BY season_number DESC LIMIT 1")
@@ -732,7 +730,7 @@ async def start_season(ctx):
         return
 
     try:
-        conn = sqlite3.connect(sqliteFile)
+        conn = sqlite3.connect(SQLITEFILE)
         c = conn.cursor()
 
         c.execute(
@@ -775,7 +773,7 @@ async def end_season(ctx):
         return
 
     try:
-        conn = sqlite3.connect(sqliteFile)
+        conn = sqlite3.connect(SQLITEFILE)
         c = conn.cursor()
 
         c.execute("SELECT season_number FROM seasons WHERE active=1")
@@ -963,7 +961,7 @@ async def show_pairings(ctx, *, args: str = None):
 
     conn = None
     try:
-        conn = sqlite3.connect(sqliteFile)
+        conn = sqlite3.connect(SQLITEFILE)
         c = conn.cursor()
 
         c.execute("SELECT season_number FROM seasons WHERE active=1")

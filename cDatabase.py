@@ -1,13 +1,12 @@
 import asyncio, csv, os, sqlite3
 from datetime import datetime, timedelta
-
-ROLES_CONFIG_FILE = "elo_roles.csv"
-sqliteFile = "elo_bot.db"
+from constants import *
 
 
 def init_db():
-    missing, extra = check_database_structure(sqliteFile)
-    conn = sqlite3.connect(sqliteFile)
+    missing, extra = check_database_structure(SQLITEFILE)
+
+    conn = sqlite3.connect(SQLITEFILE)
     c = conn.cursor()
 
     c.execute(
@@ -147,7 +146,7 @@ def init_db():
 
 def delete_pending_rep(rep_id):
 
-    conn = sqlite3.connect(sqliteFile)
+    conn = sqlite3.connect(SQLITEFILE)
     c = conn.cursor()
     c.execute("DELETE FROM pending_reps WHERE id=?", (rep_id,))
     conn.commit()
@@ -155,7 +154,7 @@ def delete_pending_rep(rep_id):
 
 
 def update_player_stats(player_id, elo, wins=0, losses=0, draws=0):
-    conn = sqlite3.connect(sqliteFile)
+    conn = sqlite3.connect(SQLITEFILE)
     c = conn.cursor()
     c.execute(
         """UPDATE players
@@ -171,7 +170,7 @@ def update_player_stats(player_id, elo, wins=0, losses=0, draws=0):
 
 
 def get_player_data(player_id):
-    conn = sqlite3.connect(sqliteFile)
+    conn = sqlite3.connect(SQLITEFILE)
     c = conn.cursor()
     c.execute("SELECT * FROM players WHERE id=?", (player_id,))
     player = c.fetchone()
@@ -182,7 +181,7 @@ def get_player_data(player_id):
 async def clean_old_pending_matches():
     while True:
         try:
-            conn = sqlite3.connect(sqliteFile)
+            conn = sqlite3.connect(SQLITEFILE)
             c = conn.cursor()
             cutoff_time = datetime.now() - timedelta(minutes=30)
             cutoff_str = cutoff_time.strftime("%Y-%m-%d %H:%M:%S")
@@ -199,7 +198,7 @@ async def clean_old_pending_matches():
 
 async def generate_pairings(ctx, season_number):
     try:
-        conn = sqlite3.connect(sqliteFile)
+        conn = sqlite3.connect(SQLITEFILE)
         c = conn.cursor()
 
         c.execute(
@@ -302,7 +301,7 @@ async def generate_pairings(ctx, season_number):
 
 
 def add_pending_rep(reporter_id, opponent_id, reporter_result):
-    conn = sqlite3.connect(sqliteFile)
+    conn = sqlite3.connect(SQLITEFILE)
     c = conn.cursor()
     c.execute(
         """INSERT INTO pending_reps (reporter_id, opponent_id, reporter_result)
@@ -314,7 +313,7 @@ def add_pending_rep(reporter_id, opponent_id, reporter_result):
 
 
 def get_pending_rep(reporter_id, pairing_id):
-    conn = sqlite3.connect(sqliteFile)
+    conn = sqlite3.connect(SQLITEFILE)
     c = conn.cursor()
     cutoff_time = datetime.now() - timedelta(minutes=30)
     cutoff_str = cutoff_time.strftime("%Y-%m-%d %H:%M:%S")
@@ -333,7 +332,7 @@ def get_pending_rep(reporter_id, pairing_id):
 
 
 def update_season_game(match, game, result):
-    conn = sqlite3.connect(sqliteFile)
+    conn = sqlite3.connect(SQLITEFILE)
     if game not in [1, 2]:
         return "", "wrong game number"
     c = conn.cursor()
@@ -357,7 +356,7 @@ def get_specific_pairing(ctx, opponent, c=None):
 
     conn = False
     if c == None:
-        conn = sqlite3.connect(sqliteFile)
+        conn = sqlite3.connect(SQLITEFILE)
         c = conn.cursor()
     c.execute(
         """SELECT id, player1_id, player2_id, result1, result2
@@ -380,46 +379,14 @@ def get_specific_pairing(ctx, opponent, c=None):
 
 def check_database_structure(db_file):
 
-    expected_structure = {
-        "pairings": [
-            "id",
-            "player1_id",
-            "player2_id",
-            "result1",
-            "result2",
-            "season_number",
-            "group_name",
-        ],
-        "pending_reps": [
-            "id",
-            "pairing_id",
-            "reporter_id",
-            "result",
-            "game_number",
-            "timestamp",
-        ],
-        "players": ["id", "elo", "wins", "losses", "draws", "signed_up"],
-        "seasons": ["season_number", "active"],
-        "match_history": [
-            "match",
-            "whiteplayer",
-            "blackplayer",
-            "colorwon",
-            "season",
-            "league",
-        ],
-        "elo_history": ["id", "player_id", "elo_change", "timestamp"],
-    }
-
     try:
         conn = sqlite3.connect(db_file)
         c = conn.cursor()
 
-        # Get list of actual tables
         c.execute("SELECT name FROM sqlite_master WHERE type='table';")
         actual_tables = {row[0] for row in c.fetchall()}
         missing = []
-        for table, expected_columns in expected_structure.items():
+        for table, expected_columns in DATABASE_STRUCTURE.items():
             if table not in actual_tables:
                 print(f"Missing table: {table}")
                 missing.append({"type": "table", "table": table})
@@ -435,15 +402,15 @@ def check_database_structure(db_file):
                     missing.append({"type": "column", "table": table, "column": col})
         extra = []
         for table in actual_tables:
-            if table not in expected_structure:
+            if table not in DATABASE_STRUCTURE:
                 extra.append({"type": "table", "table": table})
                 print(f"Extra table: {table}")
                 c.execute(f"PRAGMA table_info({table});")
                 actual_columns = {row[1] for row in c.fetchall()}
                 for col in actual_columns:
                     extra.append({"type": "column", "table": table, "column": col})
-            elif table in expected_structure:
-                expected_columns = expected_structure[table]
+            elif table in DATABASE_STRUCTURE:
+                expected_columns = DATABASE_STRUCTURE[table]
                 c.execute(f"PRAGMA table_info({table});")
                 actual_columns = {row[1] for row in c.fetchall()}
                 for col in actual_columns:
