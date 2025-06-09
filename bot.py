@@ -29,6 +29,11 @@ try:
     config = load_config()
     BOT_TOKEN = config["token"]
     ALLOWED_CHANNEL_ID = int(config["channel_id"])
+    if "backup_channel_id" in config.keys():
+        BACKUP_CHANNEL_ID = int(config["backup_channel_id"])
+    else:
+        BACKUP_CHANNEL_ID = None
+
 except Exception as e:
     print(f"Configuration error: {e}")
     exit(1)
@@ -498,6 +503,19 @@ async def show_stats(ctx, player: discord.Member = None):
         embed.add_field(name="Win Rate", value=f"{win_rate:.1f}%")
 
     await ctx.send(embed=embed)
+
+
+@bot.command("backup")
+@commands.has_permissions(manage_roles=True)
+async def backup_db(ctx):
+    if BACKUP_CHANNEL_ID is None:
+        await ctx.send("❌ Backup channel isn't setuped yet")
+        return
+    channel = bot.get_channel(BACKUP_CHANNEL_ID)
+    await channel.send(
+        f"BackUP: <t:{math.floor(datetime.now().timestamp())}>",
+        file=discord.File(SQLITEFILE),
+    )
 
 
 @bot.command(name="leaderboard")
