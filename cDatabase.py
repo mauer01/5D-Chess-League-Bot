@@ -4,13 +4,31 @@ from constants import *
 
 
 def init_db():
-    missing, extra = check_database_structure(SQLITEFILE)
+    missing, extra, wrong_type = check_database_structure(SQLITEFILE)
 
-    reduced_missing, reduced_extra = reduce(missing, extra)
+    reduced_missing, reduced_extra = reduce(missing), reduce(extra)
     if not os.path.exists("backup"):
         os.makedirs("backup")
     if len(missing) + len(extra) > 0:
         repair_db(reduced_missing, reduced_extra)
+    if len(wrong_type) > 0:
+        print(wrong_type)
+        if input(
+            "wrong prefered column types detected do you want to repair typestructure(yes/NO):"
+        ).lower() in ["y", "yes"]:
+            conn = sqlite3.connect(SQLITEFILE)
+            shutil.copy(SQLITEFILE, f"backup/{datetime.now().timestamp()}_{SQLITEFILE}")
+            c = conn.cursor()
+            for table in list({entry["table"] for entry in wrong_type}):
+                c.execute(f"ALTER TABLE {table} RENAME TO old_{table}")
+                conn.commit()
+                c.execute(build_table_string(table))
+                conn.commit()
+                c.execute(f"INSERT INTO {table} SELECT * from old_{table}")
+                conn.commit()
+                c.execute(f"DROP TABLE old_{table}")
+                conn.commit()
+            conn.close()
 
 
 def repair_db(reduced_missing, reduced_extra):
@@ -21,14 +39,7 @@ def repair_db(reduced_missing, reduced_extra):
         table = missed["table"]
         match missed["type"]:
             case "table":
-                sqlstring = f"CREATE TABLE {table} ({DATABASE_STRUCTURE_CREATIONSTRINGMAPPING["Tables"][table]}"
-                items = DATABASE_STRUCTURE_CREATIONSTRINGMAPPING[table].items()
-                for coltitle, coltype in items:
-                    if coltitle == "foreignkeyconstraint":
-                        sqlstring += f", {coltype}"
-                        continue
-                    sqlstring += f", {coltitle} {coltype}"
-                sqlstring += ");"
+                sqlstring = build_table_string(table)
                 c.execute(sqlstring)
                 conn.commit()
                 print(f"added {table}")
@@ -58,21 +69,28 @@ def repair_db(reduced_missing, reduced_extra):
     conn.close()
 
 
-def reduce(missing, extra):
-    skip, reduced_missing, reduced_extra = [], [], []
-    for missed in missing:
+def build_table_string(table):
+    sqlstring = f"CREATE TABLE {table} ({DATABASE_STRUCTURE_CREATIONSTRINGMAPPING["Tables"][table]}"
+    items = DATABASE_STRUCTURE_CREATIONSTRINGMAPPING[table].items()
+    for coltitle, coltype in items:
+        if coltitle == "foreignkeyconstraint":
+            sqlstring += f", {coltype}"
+            continue
+        sqlstring += f", {coltitle} {coltype}"
+    sqlstring += ");"
+    return sqlstring
+
+
+def reduce(list):
+    skip, reduced_list = [], []
+    for missed in list:
         if missed["type"] == "table":
             skip.append(missed["table"])
         elif missed["table"] in skip:
             continue
-        reduced_missing.append(missed)
-    for ext in extra:
-        if ext["type"] == "table":
-            skip.append(ext["table"])
-        elif ext["table"] in skip:
-            continue
-        reduced_extra.append(ext)
-    return reduced_missing, reduced_extra
+        reduced_list.append(missed)
+
+    return reduced_list
 
 
 def delete_pending_rep(rep_id):
@@ -331,7 +349,7 @@ def check_database_structure(db_file):
                 if col not in actual_columns:
                     print(f"Missing column in {table}: {col}")
                     missing.append({"type": "column", "table": table, "column": col})
-        extra = []
+        extra, wrong_type = [], []
         for table in actual_tables:
             if table == "sqlite_sequence":
                 continue
@@ -339,19 +357,38 @@ def check_database_structure(db_file):
                 extra.append({"type": "table", "table": table})
                 print(f"Extra table: {table}")
                 c.execute(f"PRAGMA table_info({table});")
-                actual_columns = {row[1] for row in c.fetchall()}
+                table_info = c.fetchall()
+                actual_columns = {row[1] for row in table_info}
                 for col in actual_columns:
                     extra.append({"type": "column", "table": table, "column": col})
             elif table in DATABASE_STRUCTURE:
                 expected_columns = DATABASE_STRUCTURE[table]
                 c.execute(f"PRAGMA table_info({table});")
-                actual_columns = {row[1] for row in c.fetchall()}
-                for col in actual_columns:
+                table_info = c.fetchall()
+                actual_columns = {row[1]: row[2] for row in table_info}
+                for col, type in actual_columns.items():
                     if col not in expected_columns:
                         print(f"Extra column in {table}: {col}")
                         extra.append({"type": "column", "table": table, "column": col})
+                    else:
+                        colmap = DATABASE_STRUCTURE_CREATIONSTRINGMAPPING[table]
 
-        return missing, extra
+                        if col not in colmap:
+                            continue
+                        expected_type = DATABASE_STRUCTURE_CREATIONSTRINGMAPPING[table][
+                            col
+                        ].split(" ")[0]
+                        if type.upper() != expected_type.upper():
+                            wrong_type.append(
+                                {
+                                    "table": table,
+                                    "column": col,
+                                    "type": type,
+                                    "expected_type": expected_type,
+                                }
+                            )
+
+        return missing, extra, wrong_type
     except sqlite3.Error as e:
         print(f"SQLite error: {e}")
         return False
