@@ -270,6 +270,8 @@ def check_database_structure(db_file):
                     missing.append({"type": "column", "table": table, "column": col})
         extra = []
         for table in actual_tables:
+            if table == "sqlite_sequence":
+                continue
             if table not in DATABASE_STRUCTURE:
                 extra.append({"type": "table", "table": table})
                 print(f"Extra table: {table}")
