@@ -1,15 +1,78 @@
-import asyncio, csv, os, sqlite3
+import asyncio, csv, os, sqlite3, shutil
 from datetime import datetime, timedelta
 from constants import *
 
 
 def init_db():
     missing, extra = check_database_structure(SQLITEFILE)
-    conn = sqlite3.connect(SQLITEFILE)
-    c = conn.cursor()
 
+    reduced_missing, reduced_extra = reduce(missing, extra)
+    if not os.path.exists("backup"):
+        os.makedirs("backup")
+    if len(missing) + len(extra) > 0:
+        repair_db(reduced_missing, reduced_extra)
+
+
+def repair_db(reduced_missing, reduced_extra):
+    conn = sqlite3.connect(SQLITEFILE)
+    shutil.copy(SQLITEFILE, f"backup/{datetime.now().timestamp()}_{SQLITEFILE}")
+    for missed in reduced_missing:
+        c = conn.cursor()
+        table = missed["table"]
+        match missed["type"]:
+            case "table":
+                sqlstring = f"CREATE TABLE {table} ({DATABASE_STRUCTURE_CREATIONSTRINGMAPPING["Tables"][table]}"
+                items = DATABASE_STRUCTURE_CREATIONSTRINGMAPPING[table].items()
+                for coltitle, coltype in items:
+                    if coltitle == "foreignkeyconstraint":
+                        sqlstring += f", {coltype}"
+                        continue
+                    sqlstring += f", {coltitle} {coltype}"
+                sqlstring += ");"
+                c.execute(sqlstring)
+                conn.commit()
+                print(f"added {table}")
+            case "column":
+                col = missed["column"]
+                sqlstring = f"ALTER TABLE {table} ADD COLUMN {col} {DATABASE_STRUCTURE_CREATIONSTRINGMAPPING[table][col]};"
+                c.execute(sqlstring)
+                conn.commit()
+                print(f"added {col} to {table}")
+
+    for ext in reduced_extra:
+        c = conn.cursor()
+        table = ext["table"]
+        match ext["type"]:
+            case "table":
+                sqlstring = f"DROP TABLE {table};"
+                c.execute(sqlstring)
+                conn.commit()
+                print(f"dropped {table}")
+            case "column":
+                col = ext["column"]
+                sqlstring = f"ALTER TABLE {table} DROP COLUMN {col};"
+                c.execute(sqlstring)
+                conn.commit
+                print(f"dropped {col} in {table}")
     conn.commit()
     conn.close()
+
+
+def reduce(missing, extra):
+    skip, reduced_missing, reduced_extra = [], [], []
+    for missed in missing:
+        if missed["type"] == "table":
+            skip.append(missed["table"])
+        elif missed["table"] in skip:
+            continue
+        reduced_missing.append(missed)
+    for ext in extra:
+        if ext["type"] == "table":
+            skip.append(ext["table"])
+        elif ext["table"] in skip:
+            continue
+        reduced_extra.append(ext)
+    return reduced_missing, reduced_extra
 
 
 def delete_pending_rep(rep_id):
