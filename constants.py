@@ -136,7 +136,7 @@ DATABASE_STRUCTURE_CREATIONSTRINGMAPPING = {
     },
     "player_aliases": {
         "player_id": "INTEGER",
-        "alias": "STRING UNIQUE",
+        "alias": "TEXT UNIQUE",
         "foreignkeyconstraint": """
                 FOREIGN KEY
                 (
