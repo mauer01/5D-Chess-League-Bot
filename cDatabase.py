@@ -70,7 +70,7 @@ def repair_db(reduced_missing, reduced_extra):
 
 
 def build_table_string(table):
-    sqlstring = f"CREATE TABLE {table} ({DATABASE_STRUCTURE_CREATIONSTRINGMAPPING["Tables"][table]}"
+    sqlstring = f"CREATE TABLE {table} ({DATABASE_STRUCTURE_CREATIONSTRINGMAPPING['Tables'][table]}"
     items = DATABASE_STRUCTURE_CREATIONSTRINGMAPPING[table].items()
     for coltitle, coltype in items:
         if coltitle == "foreignkeyconstraint":
