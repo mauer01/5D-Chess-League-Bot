@@ -305,8 +305,38 @@ def update_season_game(match, game, result):
     conn.close()
 
 
-def update_match_history(match, game, result, season, pgn=""):
-    print("not yet")
+def update_match_history(match, game, result):
+    conn = sqlite3.connect(SQLITEFILE)
+    c = conn.cursor()
+    c.execute(
+        """
+              SELECT player1_id,player2_id,season_number,group_name
+              FROM pairings
+              WHERE id = ?
+              """,
+        (match,),
+    )
+    if game == 1:
+        whitePlayer, blackPlayer, season, league = c.fetchone()
+    else:
+        blackPlayer, whitePlayer, season, league = c.fetchone()
+    mapping = {"1": "w", "0": "b", "0.5": "d"}
+    data = {
+        "white": whitePlayer,
+        "black": blackPlayer,
+        "color": mapping.get(result, result),
+        "season": season,
+        "league": league,
+    }
+    c = conn.cursor()
+    c.execute(
+        """
+        INSERT INTO match_history (whiteplayer, blackplayer, colorwon, season, league)
+        VALUES (:white, :black, :color, :season, :league)
+        """,
+        data,
+    )
+    conn.commit()
 
 
 def get_specific_pairing(ctx, opponent, c=None):
