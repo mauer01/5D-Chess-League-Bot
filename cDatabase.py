@@ -105,6 +105,13 @@ def delete_pending_rep(rep_id):
 def update_player_stats(player_id, elo, wins=0, losses=0, draws=0):
     conn = sqlite3.connect(SQLITEFILE)
     c = conn.cursor()
+    c.execute("SELECT elo FROM players where id=?", (player_id,))
+    old_elo = c.fetchone()[0]
+    elochange = elo - old_elo
+    c.execute(
+        "INSERT INTO elo_history (player_id, elo_change) VALUES (?,?)",
+        (player_id, elochange),
+    )
     c.execute(
         """UPDATE players
                  SET elo=?,
@@ -114,6 +121,7 @@ def update_player_stats(player_id, elo, wins=0, losses=0, draws=0):
                  WHERE id = ?""",
         (elo, wins, losses, draws, player_id),
     )
+
     conn.commit()
     conn.close()
 
