@@ -117,6 +117,7 @@ async def update_player_roles(ctx):
         conn = sqlite3.connect(SQLITEFILE)
         c = conn.cursor()
         c.execute("SELECT id, elo FROM players WHERE signed_up=1")
+        c.execute("UPDATE players SET seasons_missed = 0 WHERE signed_up = 1")
         players = c.fetchall()
         conn.close()
 
