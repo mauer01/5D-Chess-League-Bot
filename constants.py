@@ -21,7 +21,7 @@ DATABASE_STRUCTURE = {
         "game_number",
         "timestamp",
     ],
-    "players": ["id", "elo", "wins", "losses", "draws", "signed_up"],
+    "players": ["id", "elo", "wins", "losses", "draws", "signed_up", "seasons_missed"],
     "seasons": ["season_number", "active"],
     "match_history": [
         "match",
@@ -51,6 +51,7 @@ DATABASE_STRUCTURE_CREATIONSTRINGMAPPING = {
         "losses": "INTEGER DEFAULT 0",
         "draws": "INTEGER DEFAULT 0",
         "signed_up": "INTEGER DEFAULT 0",
+        "seasons_missed": "INTEGER DEFAULT 0",
     },
     "pairings": {
         "player1_id": "INTEGER",
