@@ -215,8 +215,8 @@ async def generate_pairings(ctx, season_number):
 
                 import random
 
-#               random.shuffle(player_ids)
-                cnt = 20
+                random.shuffle(player_ids)
+                cnt = len(player_ids)
                 result = []
                 while cnt > 12:
                     cnt -= 6
@@ -227,10 +227,11 @@ async def generate_pairings(ctx, season_number):
                 result.append(cnt - remainder)
 
                 for i in range(len(result)):
-                    for j in range(i, len(result)):
-                        while result[i] > result[j]:
-                            result[j] += 1
-                            result[i] -= 1
+                    for j in range(0, len(result)):
+                        if i != j:
+                            while result[i] > result[j]:
+                                result[j] += 1
+                                result[i] -= 1
 
                 nolook = 0
                 for size in result:
