@@ -215,12 +215,28 @@ async def generate_pairings(ctx, season_number):
 
                 import random
 
-                random.shuffle(player_ids)
-                subgroup_size = max(4, len(player_ids) // ((len(player_ids) // 7) + 1))
-                subgroups = [
-                    player_ids[i : i + subgroup_size]
-                    for i in range(0, len(player_ids), subgroup_size)
-                ]
+#               random.shuffle(player_ids)
+                cnt = 20
+                result = []
+                while cnt > 12:
+                    cnt -= 6
+                    result.append(6)
+
+                remainder = cnt // 2
+                result.append(remainder)
+                result.append(cnt - remainder)
+
+                for i in range(len(result)):
+                    for j in range(i, len(result)):
+                        while result[i] > result[j]:
+                            result[j] += 1
+                            result[i] -= 1
+
+                nolook = 0
+                for size in result:
+                    subgroups.append(player_ids[nolook:nolook + size])
+                    nolook += size
+
             else:
                 subgroups = [player_ids]
 

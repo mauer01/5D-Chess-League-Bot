@@ -117,8 +117,9 @@ async def update_player_roles(ctx):
         conn = sqlite3.connect(SQLITEFILE)
         c = conn.cursor()
         c.execute("SELECT id, elo FROM players WHERE signed_up=1")
-        c.execute("UPDATE players SET seasons_missed = 0 WHERE signed_up = 1")
+
         players = c.fetchall()
+        c.execute("UPDATE players SET seasons_missed = 0 WHERE signed_up = 1")
         conn.close()
 
         if not players:
@@ -181,8 +182,9 @@ async def update_player_roles(ctx):
         conn = sqlite3.connect(SQLITEFILE)
         c = conn.cursor()
         c.execute("SELECT id, elo, seasons_missed FROM players WHERE signed_up=0")
-        c.execute("UPDATE players SET seasons_missed = seasons_missed + 1 WHERE signed_up = 0")
+
         n_players = c.fetchall()
+        c.execute("UPDATE players SET seasons_missed = seasons_missed + 1 WHERE signed_up = 0")
         conn.close()
 
         for i, (player_id, elo, missed_seasons) in enumerate(n_players):
