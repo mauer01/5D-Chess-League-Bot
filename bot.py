@@ -350,6 +350,10 @@ async def report_match(ctx, result: str, opponent: discord.Member, game_number: 
                             "❌ Results don't match! Please report the opposite result."
                         )
                         return
+                    else:
+                        await ctx.send(
+                            "✅ Game Successfully reported!."
+                        )
 
                     c.execute(
                         f"""UPDATE pairings 
