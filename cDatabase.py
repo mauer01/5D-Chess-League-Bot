@@ -334,14 +334,14 @@ def update_match_history(match, game, result):
         (match,),
     )
 
-    mapping = {"1.0": "w", "0.0": "b", "0.5": "d"}
+    mapping = {1.0: "w", 0.0: "b", 0.5: "d"}
 
     if game == 1:
         whitePlayer, blackPlayer, season, league = c.fetchone()
         data = {
             "white": whitePlayer,
             "black": blackPlayer,
-            "result": mapping[str(result)],
+            "result": mapping[round(result,1)],
             "season": season,
             "league": league,
         }
@@ -350,7 +350,7 @@ def update_match_history(match, game, result):
         data = {
             "white": whitePlayer,
             "black": blackPlayer,
-            "result": mapping[str(1-result)],
+            "result": mapping[round(1-result,1)],
             "season": season,
             "league": league,
         }
