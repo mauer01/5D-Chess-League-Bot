@@ -385,20 +385,16 @@ async def report_match(ctx, result: str, opponent: discord.Member, game_number: 
                             g1_p2, g1_p1 = update_elo(p2_elo, p1_elo)
 
                         if game2 == 0.5:
-                            g2_p1, g2_p2 = update_elo(p1_elo, p2_elo, draw=True)
+                            g2_p1, g2_p2 = update_elo(g1_p1, g1_p2, draw=True)
                         elif game2 == 1.0:
-                            g2_p1, g2_p2 = update_elo(p1_elo, p2_elo, game2 == 1.0)
+                            g2_p1, g2_p2 = update_elo(g1_p1, g1_p2, game2 == 1.0)
                         else:
-                            g2_p2, g2_p1 = update_elo(p2_elo, p1_elo, game2 == 1.0)
-
-                        final_p1 = (g1_p1 + g2_p1) / 2
-                        final_p2 = (g1_p2 + g2_p2) / 2
+                            g2_p2, g2_p1 = update_elo(g1_p2, g1_p2, game2 == 1.0)
 
                         p1_wins = sum(
                             1
                             for r in [game1, game2]
-                            if (r == 1.0 and p1_id == ctx.author.id)
-                            or (r == 0.0 and p2_id == ctx.author.id)
+                            if (r == 1.0)
                         )
                         p1_losses = (
                             2 - p1_wins - sum(1 for r in [game1, game2] if r == 0.5)
@@ -410,10 +406,10 @@ async def report_match(ctx, result: str, opponent: discord.Member, game_number: 
                         p2_draws = p1_draws
 
                         update_player_stats(
-                            p1_id, final_p1, p1_wins, p1_losses, p1_draws
+                            p1_id, g2_p1, p1_wins, p1_losses, p1_draws
                         )
                         update_player_stats(
-                            p2_id, final_p2, p2_wins, p2_losses, p2_draws
+                            p2_id, g2_p2, p2_wins, p2_losses, p2_draws
                         )
 
                         await ctx.send(
@@ -1164,7 +1160,6 @@ async def on_message(message):
         allowed, _ = check_channel(message)
         if allowed:
             await bot.process_commands(message)
-
 
 try:
     bot.run(BOT_TOKEN)
