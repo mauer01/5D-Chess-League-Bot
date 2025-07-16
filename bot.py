@@ -518,7 +518,7 @@ async def show_stats(ctx, player: discord.Member = None):
     embed.add_field(name="Total Games", value=total_games)
 
     if data[2] + data[3] > 0:
-        win_rate = (data[2] + 0.5*data[4] / total_games) * 100
+        win_rate = ((data[2] + 0.5*data[4]) / total_games) * 100
         embed.add_field(name="Win Rate", value=f"{win_rate:.1f}%")
 
     await ctx.send(embed=embed)
