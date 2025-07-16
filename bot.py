@@ -414,8 +414,8 @@ async def report_match(ctx, result: str, opponent: discord.Member, game_number: 
 
                         await ctx.send(
                             f"✅ Both games confirmed! Updated:\n"
-                            f"<@{p1_id}>: {p1_wins}W {p1_losses}L {p1_draws}D | ELO: {p1_elo:.0f}→{final_p1:.0f}\n"
-                            f"<@{p2_id}>: {p2_wins}W {p2_losses}L {p2_draws}D | ELO: {p2_elo:.0f}→{final_p2:.0f}"
+                            f"<@{p1_id}>: {p1_wins}W {p1_losses}L {p1_draws}D | ELO: {p1_elo:.0f}→{g2_p1:.0f}\n"
+                            f"<@{p2_id}>: {p2_wins}W {p2_losses}L {p2_draws}D | ELO: {p2_elo:.0f}→{g2_p1:.0f}"
                         )
 
                     c.execute(
