@@ -389,7 +389,7 @@ async def report_match(ctx, result: str, opponent: discord.Member, game_number: 
                         elif game2 == 1.0:
                             g2_p1, g2_p2 = update_elo(g1_p1, g1_p2, game2 == 1.0)
                         else:
-                            g2_p2, g2_p1 = update_elo(g1_p2, g1_p2, game2 == 1.0)
+                            g2_p2, g2_p1 = update_elo(g1_p2, g1_p1, game2 == 1.0)
 
                         p1_wins = sum(
                             1
