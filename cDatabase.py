@@ -334,7 +334,7 @@ def update_match_history(match, game, result):
         (match,),
     )
 
-    mapping = {"1": "w", "0": "b", "0.5": "d"}
+    mapping = {"1.0": "w", "0.0": "b", "0.5": "d"}
 
     if game == 1:
         whitePlayer, blackPlayer, season, league = c.fetchone()
