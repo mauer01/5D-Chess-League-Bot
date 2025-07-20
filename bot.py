@@ -872,6 +872,8 @@ async def show_help(ctx):
             "`$leaderboard [number]` - Show top X players (max 25)\n"
             "`$leaderboard [role name]` - Show leaderboard for a specific role\n"
             "`$leaderboard [number] [role name]` - Combined options"
+            "`$groupranking [group name]` - shows the current rankings of the group you are requesting"
+            "`$groupranking [group name] [season number]` - Shows the Rankings of the Specific Season"
         ),
         inline=False,
     )
