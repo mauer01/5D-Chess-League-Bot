@@ -2,7 +2,10 @@ import discord
 from discord.ext import commands
 import sqlite3, math, csv, os, shlex
 from constants import ROLES_CONFIG_FILE, SQLITEFILE
-from cDatabase import *
+from calculation import update_elo
+from database import *
+from database import register_new_player
+from database import sign_up_player
 
 
 def load_config():
@@ -44,24 +47,6 @@ bot = commands.Bot(command_prefix="$", intents=intents, help_command=None)
 
 
 init_db()
-
-
-def get_expected_score(a, b):
-    return 1 / (1 + math.pow(10, (b - a) / 400))
-
-
-def update_elo(winner_elo, loser_elo, draw=False):
-    if draw:
-        expected_winner = get_expected_score(winner_elo, loser_elo)
-        expected_loser = get_expected_score(loser_elo, winner_elo)
-        new_winner_elo = winner_elo + 25 * (0.5 - expected_winner)
-        new_loser_elo = loser_elo + 25 * (0.5 - expected_loser)
-        return new_winner_elo, new_loser_elo
-    else:
-        expected = get_expected_score(winner_elo, loser_elo)
-        new_winner_elo = winner_elo + 25 * (1 - expected)
-        new_loser_elo = loser_elo - 25 * (1 - expected)
-        return new_winner_elo, new_loser_elo
 
 
 @bot.command(name="update_roles")
@@ -270,11 +255,7 @@ async def register_player(ctx):
         await ctx.send(f"{ctx.author.mention}, you're already registered!")
         return
 
-    conn = sqlite3.connect(SQLITEFILE)
-    c = conn.cursor()
-    c.execute("INSERT INTO players (id, elo) VALUES (?, ?)", (player_id, INITIAL_ELO))
-    conn.commit()
-    conn.close()
+    register_new_player(player_id)
 
     await ctx.send(
         f"🎉 {ctx.author.mention} has been registered with an initial ELO of {INITIAL_ELO}!"
@@ -724,22 +705,13 @@ async def signup_player(ctx):
     if not get_player_data(player_id):
         await ctx.send(f"You need to register first with `$register`!")
         return
-
-    conn = sqlite3.connect(SQLITEFILE)
-    c = conn.cursor()
-
-    c.execute("SELECT active FROM seasons ORDER BY season_number DESC LIMIT 1")
-    season_active = c.fetchone()[0]
+    (_, season_active) = get_latest_season()
 
     if not season_active:
-
-        c.execute("UPDATE players SET signed_up=1 WHERE id=?", (player_id,))
-        conn.commit()
+        sign_up_player(player_id)
         await ctx.send(f"✅ {ctx.author.mention} has signed up for the current season!")
     else:
         await ctx.send("❌ Season is already active")
-
-    conn.close()
 
 
 @bot.command(name="start_season")
@@ -983,7 +955,7 @@ async def show_groupleaderboard(ctx, group, season="latest"):
         return
 
     if season == "latest":
-        season = get_latest_season()
+        (season, _) = get_latest_season()
     leaderboard = get_group_ranking(season, group)
     embed = discord.Embed(
         title="Rankings", description=f"Ranking of {group} in Season {season}"
