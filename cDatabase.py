@@ -367,7 +367,7 @@ def find_player_group(player_id, season):
     c = conn.cursor()
     c.execute(
         """
-        SELECT group_name FROM pairings where (player1_id = :player or player2_id = :player) and season LIKE ':season';
+        SELECT group_name FROM pairings where (player1_id = :player or player2_id = :player) and season_number = :season;
         """,
         {"season": season, "player": player_id},
     )
@@ -375,12 +375,14 @@ def find_player_group(player_id, season):
     if not group:
         c.execute(
             """
-            SELECT league from match_history where (whiteplayer = :player or blackplayer = :player) and season LIKE '%:season'
+            SELECT league from match_history where (whiteplayer = :player or blackplayer = :player) and REPLACE(UPPER(season), 'SEASON ', '') = :season
             """,
             {"season": season, "player": player_id},
         )
         group = c.fetchone()
-    return group
+    if not group:
+        group = ("",)
+    return group[0]
 
 
 def get_specific_pairing(ctx, opponent, c=None):
