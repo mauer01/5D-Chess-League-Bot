@@ -342,6 +342,30 @@ async def report_match(ctx, result: str, opponent: discord.Member, game_number: 
             )
             existing_rep = c.fetchone()
 
+            c.execute(
+                """SELECT result1, result2
+                   FROM pairings
+                   WHERE (player1_id = ? AND player2_id = ?)
+                     AND season_number = (SELECT season_number FROM seasons WHERE active = 1)
+                """,
+                (p1_id, p2_id),
+            )
+
+            game1, game2 = c.fetchone()
+            if game_number == 1:
+                if game1 is not None:
+                    await ctx.send(
+                        "❌ Results have already been reported cannot report result again."
+                    )
+                    return
+
+            if game_number == 2:
+                if game2 is not None:
+                    await ctx.send(
+                        "❌ Results have already been reported cannot report result again."
+                    )
+                    return
+
             if existing_rep:
 
                 if existing_rep[0] == opponent.id:
@@ -871,8 +895,8 @@ async def show_help(ctx):
             "`$leaderboard` - Show top 10 players\n"
             "`$leaderboard [number]` - Show top X players (max 25)\n"
             "`$leaderboard [role name]` - Show leaderboard for a specific role\n"
-            "`$leaderboard [number] [role name]` - Combined options"
-            "`$groupranking [group name]` - shows the current rankings of the group you are requesting"
+            "`$leaderboard [number] [role name]` - Combined options\n"
+            "`$groupranking [group name]` - shows the current rankings of the group you are requesting\n"
             "`$groupranking [group name] [season number]` - Shows the Rankings of the Specific Season"
         ),
         inline=False,
