@@ -927,16 +927,17 @@ async def show_help(ctx):
     embed.add_field(
         name="ℹ️ How It Works",
         value=(
-            "**Regular Matches:**\n"
+            "**Match Info:**\n"
             "1. Both players must `$register` first\n"
             "2. One player reports the match with `$rep`\n"
             "3. The other player confirms by reporting the opposite result\n"
             "4. ELO is updated automatically after confirmation\n\n"
-            "**Season Matches:**\n"
+            "**Season Info:**\n"
             "1. Admin starts season with `$start_season`\n"
             "2. Players sign up with `$signup`\n"
-            "3. Pairings are generated automatically\n"
-            "4. Report results with `$rep` (no confirmation needed)\n"
+            "3. Players can see pairings with `$pairings`\n"
+            "4. Report results with `$rep`\n"
+            "5. Players can see group rankings with `$grouprankings`\n"
             "5. Admin ends season with `$end_season`"
         ),
         inline=False,
