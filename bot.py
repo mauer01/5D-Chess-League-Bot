@@ -1001,14 +1001,18 @@ class PairingsPaginator(discord.ui.View):
 
 
 @bot.command(name="groupranking")
-async def show_groupleaderboard(ctx, group, season="latest"):
+async def show_groupleaderboard(ctx, group="own", season="latest"):
     allowed, error_msg = check_channel(ctx)
     if not allowed:
         await ctx.send(error_msg)
         return
-
     if season == "latest":
         season = get_latest_season()
+    if group == "own":
+        group = find_player_group(ctx.author.id, season)
+    if not group:
+        await ctx.send(f"❌ Couldnt find your given Group in {season}")
+        return
     leaderboard = get_group_ranking(season, group)
     embed = discord.Embed(
         title="Rankings", description=f"Ranking of {group} in Season {season}"
