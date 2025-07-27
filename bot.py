@@ -1005,7 +1005,7 @@ async def show_groupleaderboard(ctx, group, season="latest"):
         else:
             embed.add_field(
                 name=f"{i}.",
-                value=f"Name: {name}, Score: {player["points"]}, SB: {player["sb"]}",
+                value=f"Name: {name}, Score: {player['points']}, SB: {player['sb']}",
                 inline=False,
             )
     await ctx.send(embed=embed)
