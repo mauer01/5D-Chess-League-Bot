@@ -6,6 +6,7 @@ from constants import INITIAL_ELO, ROLES_CONFIG_FILE, SQLITEFILE
 from database import (
     activate_season,
     clean_old_pending_matches,
+    find_player_group,
     setup_future_season,
     delete_pending_rep,
     find_unsigned_players,
@@ -284,6 +285,30 @@ async def report_match(ctx, result: str, opponent: discord.Member, game_number: 
                 (pairing_id, game_number),
             )
             existing_rep = c.fetchone()
+
+            c.execute(
+                """SELECT result1, result2
+                   FROM pairings
+                   WHERE (player1_id = ? AND player2_id = ?)
+                     AND season_number = (SELECT season_number FROM seasons WHERE active = 1)
+                """,
+                (p1_id, p2_id),
+            )
+
+            game1, game2 = c.fetchone()
+            if game_number == 1:
+                if game1 is not None:
+                    await ctx.send(
+                        "❌ Results have already been reported cannot report result again."
+                    )
+                    return
+
+            if game_number == 2:
+                if game2 is not None:
+                    await ctx.send(
+                        "❌ Results have already been reported cannot report result again."
+                    )
+                    return
 
             if existing_rep:
 
@@ -762,8 +787,8 @@ async def show_help(ctx):
             "`$leaderboard` - Show top 10 players\n"
             "`$leaderboard [number]` - Show top X players (max 25)\n"
             "`$leaderboard [role name]` - Show leaderboard for a specific role\n"
-            "`$leaderboard [number] [role name]` - Combined options"
-            "`$groupranking [group name]` - shows the current rankings of the group you are requesting"
+            "`$leaderboard [number] [role name]` - Combined options\n"
+            "`$groupranking [group name]` - shows the current rankings of the group you are requesting\n"
             "`$groupranking [group name] [season number]` - Shows the Rankings of the Specific Season"
         ),
         inline=False,
@@ -794,16 +819,17 @@ async def show_help(ctx):
     embed.add_field(
         name="ℹ️ How It Works",
         value=(
-            "**Regular Matches:**\n"
+            "**Match Info:**\n"
             "1. Both players must `$register` first\n"
             "2. One player reports the match with `$rep`\n"
             "3. The other player confirms by reporting the opposite result\n"
             "4. ELO is updated automatically after confirmation\n\n"
-            "**Season Matches:**\n"
+            "**Season Info:**\n"
             "1. Admin starts season with `$start_season`\n"
             "2. Players sign up with `$signup`\n"
-            "3. Pairings are generated automatically\n"
-            "4. Report results with `$rep` (no confirmation needed)\n"
+            "3. Players can see pairings with `$pairings`\n"
+            "4. Report results with `$rep`\n"
+            "5. Players can see group rankings with `$grouprankings`\n"
             "5. Admin ends season with `$end_season`"
         ),
         inline=False,
@@ -867,14 +893,18 @@ class PairingsPaginator(discord.ui.View):
 
 
 @bot.command(name="groupranking")
-async def show_groupleaderboard(ctx, group, season="latest"):
+async def show_groupleaderboard(ctx, group="own", season="latest"):
     allowed, error_msg = check_channel(ctx)
     if not allowed:
         await ctx.send(error_msg)
         return
-
     if season == "latest":
-        (season, _) = get_latest_season()
+        season = get_latest_season()
+    if group == "own":
+        group = find_player_group(ctx.author.id, season)
+    if not group:
+        await ctx.send(f"❌ Couldnt find your given Group in {season}")
+        return
     leaderboard = get_group_ranking(season, group)
     embed = discord.Embed(
         title="Rankings", description=f"Ranking of {group} in Season {season}"
@@ -890,13 +920,13 @@ async def show_groupleaderboard(ctx, group, season="latest"):
         if ctx.author.id == id:
             embed.add_field(
                 name=f"{i}.",
-                value=f"**Name: {name}**, Score: {player["points"]}, SB: {player["sb"]}",
+                value=f"**Name: {name}**, Score: {player['points']}, SB: {player['sb']}",
                 inline=False,
             )
         else:
             embed.add_field(
                 name=f"{i}.",
-                value=f"Name: {name}, Score: {player["points"]}, SB: {player["sb"]}",
+                value=f"Name: {name}, Score: {player['points']}, SB: {player['sb']}",
                 inline=False,
             )
     await ctx.send(embed=embed)
