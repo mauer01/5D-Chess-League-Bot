@@ -362,6 +362,27 @@ def update_match_history(match, game, result):
     conn.commit()
 
 
+def find_player_group(player_id, season):
+    conn = sqlite3.connect(SQLITEFILE)
+    c = conn.cursor()
+    c.execute(
+        """
+        SELECT group_name FROM pairings where (player1_id = :player or player2_id = :player) and season LIKE ':season';
+        """,
+        {"season": season, "player": player_id},
+    )
+    group = c.fetchone()
+    if not group:
+        c.execute(
+            """
+            SELECT league from match_history where (whiteplayer = :player or blackplayer = :player) and season LIKE '%:season'
+            """,
+            {"season": season, "player": player_id},
+        )
+        group = c.fetchone()
+    return group
+
+
 def get_specific_pairing(ctx, opponent, c=None):
 
     conn = False
