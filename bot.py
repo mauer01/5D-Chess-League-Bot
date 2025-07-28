@@ -1018,13 +1018,13 @@ async def show_groupleaderboard(ctx, group="own", season="latest"):
         if ctx.author.id == id:
             embed.add_field(
                 name=f"{i}.",
-                value=f"**Name: {name}**, Score: {player['points']}, SB: {player['sb']}",
+                value=f"**Name: {name}**, Score: {player['points']}, SB: {player['sb']}\n",
                 inline=True,
             )
         else:
             embed.add_field(
                 name=f"{i}.",
-                value=f"Name: {name}, Score: {player['points']}, SB: {player['sb']}",
+                value=f"Name: {name}, Score: {player['points']}, SB: {player['sb']}\n",
                 inline=True,
             )
     await ctx.send(embed=embed)
