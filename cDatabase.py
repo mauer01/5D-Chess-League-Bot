@@ -451,7 +451,7 @@ def get_group_ranking(season, group):
                 FROM match_history
                 WHERE REPLACE(UPPER(season), 'SEASON ', '') = :season;
             """,
-            {"player": player, "season": season},
+            {"player": player, "season": str(season)},
         )
 
         points = c.fetchone()[0]
@@ -473,7 +473,7 @@ def get_group_ranking(season, group):
                     AND REPLACE(UPPER(season), 'SEASON ', '') = :season
                 )
             """,
-            {"player": player, "season": season},
+            {"player": player, "season": str(season)},
         )
         if points == None:
             points = 0
