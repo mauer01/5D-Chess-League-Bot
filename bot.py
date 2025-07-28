@@ -489,187 +489,177 @@ async def backup_db(ctx):
 
 @bot.command(name="leaderboard")
 async def show_leaderboard(ctx, *args):
+    """Show the top N players, optionally filtered by role, with your own rank highlighted."""
+
+    import aiosqlite
+
     allowed, error_msg = check_channel(ctx)
     if not allowed:
-        await ctx.send(error_msg)
-        return
+        return await ctx.send(error_msg)
 
+    # 1️⃣ parse args
     limit = 10
     role_name = None
-
     for arg in args:
         if arg.isdigit():
             limit = min(max(1, int(arg)), 25)
         else:
-            if role_name is None:
-                role_name = arg
-            else:
-                role_name += " " + arg
+            role_name = (role_name + " " + arg).strip() if role_name else arg
 
-    conn = sqlite3.connect(SQLITEFILE)
-    c = conn.cursor()
-
-    query = "SELECT id, elo, wins, losses, draws FROM players"
-    params = ()
-
+    # 2️⃣ resolve role & its member IDs
     role = None
+    member_ids = None
     if role_name:
         role = discord.utils.find(
             lambda r: r.name.lower() == role_name.lower(), ctx.guild.roles
         )
         if not role:
-            await ctx.send(f"Role '{role_name}' not found!")
-            conn.close()
-            return
-
-        member_ids = [str(m.id) for m in role.members]
+            return await ctx.send(f"❌ Role '{role_name}' not found!")
+        member_ids = [m.id for m in role.members]
         if not member_ids:
-            await ctx.send(f"No players found with the '{role.name}' role!")
-            conn.close()
-            return
+            return await ctx.send(f"❌ No players have the '{role.name}' role!")
 
-        query += " WHERE id IN (" + ",".join(["?"] * len(member_ids)) + ")"
-        params = tuple(member_ids)
+    # 3️⃣ async DB: total count & your rank
+    async with aiosqlite.connect(SQLITEFILE) as conn:
+        conn.row_factory = aiosqlite.Row
 
-    c.execute(
-        "SELECT COUNT(*) FROM players"
-        + (" WHERE id IN (" + ",".join(["?"] * len(member_ids)) + ")" if role else ""),
-        params if role else (),
-    )
-    total_players = c.fetchone()[0]
-
-    user_data = get_player_data(ctx.author.id)
-    user_rank = None
-    user_surrounding = []
-    show_user_stats = True
-
-    if user_data:
-
-        rank_query = "SELECT COUNT(*) FROM players WHERE elo > ?"
-        if role:
-            rank_query += " AND id IN (" + ",".join(["?"] * len(member_ids)) + ")"
-
-            member = ctx.guild.get_member(ctx.author.id)
-            show_user_stats = role in member.roles if member else False
-
-        c.execute(rank_query, (user_data[1],) + (params if role else ()))
-        user_rank = c.fetchone()[0] + 1
-
-        if user_rank > limit and show_user_stats:
-
-            c.execute(query + " ORDER BY elo DESC LIMIT ?", params + (limit,))
-            top_players = c.fetchall()
-
-            offset = max(0, user_rank - 2)
-            c.execute(query + " ORDER BY elo DESC LIMIT 3 OFFSET ?", params + (offset,))
-            user_surrounding = c.fetchall()
+        # 3a. total players (for “of X” in footer)
+        if member_ids:
+            q_total = f"SELECT COUNT(*) as cnt FROM players WHERE id IN ({','.join('?'*len(member_ids))})"
+            cur = await conn.execute(q_total, member_ids)
         else:
+            cur = await conn.execute("SELECT COUNT(*) as cnt FROM players")
+        row = await cur.fetchone(); await cur.close()
+        total_players = row["cnt"]
 
-            c.execute(query + " ORDER BY elo DESC LIMIT ?", params + (limit,))
-            top_players = c.fetchall()
-    else:
+        # 3b. find your own ELO & rank
+        cur = await conn.execute(
+            "SELECT elo, wins, losses, draws FROM players WHERE id=?",
+            (ctx.author.id,)
+        )
+        you = await cur.fetchone(); await cur.close()
 
-        c.execute(query + " ORDER BY elo DESC LIMIT ?", params + (limit,))
-        top_players = c.fetchall()
-        show_user_stats = False
+        user_rank = None
+        surrounding = []
+        if you:
+            your_elo = you["elo"]
+            # count how many have strictly higher ELO
+            if member_ids:
+                q_rank = (
+                    f"SELECT COUNT(*) as cnt FROM players WHERE elo>? "
+                    f"AND id IN ({','.join('?'*len(member_ids))})"
+                )
+                params = (your_elo, *member_ids)
+            else:
+                q_rank = "SELECT COUNT(*) as cnt FROM players WHERE elo>?"
+                params = (your_elo,)
+            cur = await conn.execute(q_rank, params)
+            user_rank = (await cur.fetchone())["cnt"] + 1
+            await cur.close()
 
-    conn.close()
+        # 3c. fetch leaderboard rows
+        rows = []
+        base_query = "SELECT id, elo, wins, losses, draws FROM players"
+        where = ""
+        params = ()
+        if member_ids:
+            where = f" WHERE id IN ({','.join('?'*len(member_ids))})"
+            params = tuple(member_ids)
+        order = " ORDER BY elo DESC"
 
-    if not top_players and not user_surrounding:
-        msg = "No players found"
+        if you and user_rank and user_rank > limit:
+            #  top N + your surrounding 3
+            top_q = base_query + where + order + " LIMIT ?"
+            cur = await conn.execute(top_q, params + (limit,))
+            top = await cur.fetchall(); await cur.close()
+
+            off = max(0, user_rank - 2)
+            surround_q = base_query + where + order + " LIMIT 3 OFFSET ?"
+            cur = await conn.execute(surround_q, params + (off,))
+            surrounding = await cur.fetchall(); await cur.close()
+            rows = top
+        else:
+            # user is in top N or not registered → just top N
+            top_q = base_query + where + order + " LIMIT ?"
+            cur = await conn.execute(top_q, params + (limit,))
+            rows = await cur.fetchall(); await cur.close()
+
+    if not rows and not surrounding:
+        msg = "❌ No players found"
         if role:
             msg += f" with the '{role.name}' role"
-        msg += "! Use `$register` to join."
-        await ctx.send(msg)
-        return
+        return await ctx.send(msg + "! Use `$register` to join.")
 
+    # 4️⃣ bulk‑resolve all needed Discord names
+    all_ids = {r["id"] for r in rows} | {r["id"] for r in surrounding}
+    names = {}
+    # try cache first
+    for uid in all_ids:
+        m = ctx.guild.get_member(uid)
+        if m:
+            names[uid] = m.display_name[:20]
+    missing = [uid for uid in all_ids if uid not in names]
+    if missing:
+        fetched = await asyncio.gather(
+            *(ctx.guild.fetch_member(uid) for uid in missing),
+            return_exceptions=True
+        )
+        for res in fetched:
+            if isinstance(res, discord.Member):
+                names[res.id] = res.display_name[:20]
+            else:
+                bad = getattr(res, "user_id", None)
+                names[bad] = f"Player {bad}"
+
+    # 5️⃣ build embed
     title = f"🏆 Top {limit} Leaderboard"
     if role:
         title += f" ({role.name})"
-    title += " 🏆"
+    title += f" 🏆"
 
     embed = discord.Embed(title=title, color=role.color if role else 0xFFD700)
+    displayed = set()
 
-    displayed_ranks = set()
-    for i, (player_id, elo, wins, losses, draws) in enumerate(top_players, 1):
-        try:
-            member = await ctx.guild.fetch_member(player_id)
-            name = member.display_name[:20]
-            if role and role in member.roles:
-                name = f"{name} {str(role)}"
-        except:
-            name = f"Unknown Player ({player_id})"
+    # Top section
+    for idx, r in enumerate(rows, start=1):
+        pid, elo, w, l, d = r["id"], r["elo"], r["wins"], r["losses"], r["draws"]
+        name = names.get(pid, f"Player {pid}")
+        if role and role in ctx.guild.get_member(pid).roles:
+            name += f" {role.mention}"
 
-        games = wins + losses + draws
-        if games > 0:
-            win_rate = (wins / (wins + losses)) * 100 if (wins + losses) > 0 else 0
-            stats = f"**{elo:.0f} ELO** | {wins}W {losses}L {draws}D ({win_rate:.1f}%)"
-        else:
-            stats = f"**{elo:.0f} ELO** | No games played"
+        games = w + l + d
+        rate = f"{(w/(w+l))*100:.1f}%" if (w+l)>0 else "—"
+        stats = f"**{elo:.0f} ELO** | {w}W {l}L {d}D ({rate})" if games else f"**{elo:.0f} ELO** | No games"
 
-        embed.add_field(name=f"{i}. {name}", value=stats, inline=False)
-        displayed_ranks.add(i)
+        embed.add_field(name=f"{idx}. {name}", value=stats, inline=False)
+        displayed.add(idx)
 
-    if user_surrounding and show_user_stats:
-        embed.add_field(name="\n...", value="...", inline=False)
-
-        for i, (player_id, elo, wins, losses, draws) in enumerate(
-            user_surrounding, user_rank - 1
-        ):
-            if i in displayed_ranks:
+    # Your surrounding (if any)
+    if surrounding and you:
+        embed.add_field(name="—", value="—", inline=False)
+        for offset, r in enumerate(surrounding, start=user_rank-1):
+            idx = offset
+            if idx in displayed:
                 continue
+            pid, elo, w, l, d = r["id"], r["elo"], r["wins"], r["losses"], r["draws"]
+            name = names.get(pid, f"Player {pid}")
+            prefix = "**>>>** " if pid == ctx.author.id else ""
+            if role and role in ctx.guild.get_member(pid).roles:
+                name += f" {role.mention}"
 
-            try:
-                member = await ctx.guild.fetch_member(player_id)
-                name = member.display_name
-                highlight = "**>>>** " if player_id == ctx.author.id else ""
+            games = w + l + d
+            rate = f"{(w/(w+l))*100:.1f}%" if (w+l)>0 else "—"
+            stats = f"**{elo:.0f} ELO** | {w}W {l}L {d}D ({rate})" if games else f"**{elo:.0f} ELO** | No games"
 
-                if role and role in member.roles:
-                    name = f"{name} {str(role)}"
-            except:
-                name = f"Unknown Player ({player_id})"
-                highlight = ""
+            embed.add_field(name=f"{prefix}{idx}. {name}", value=stats, inline=False)
 
-            games = wins + losses + draws
-            if games > 0:
-                win_rate = (wins / (wins + losses)) * 100 if (wins + losses) > 0 else 0
-                stats = (
-                    f"**{elo:.0f} ELO** | {wins}W {losses}L {draws}D ({win_rate:.1f}%)"
-                )
-            else:
-                stats = f"**{elo:.0f} ELO** | No games played"
-
-            embed.add_field(name=f"{highlight}{i}. {name}", value=stats, inline=False)
-
-    if user_data and show_user_stats:
-        user_games = user_data[2] + user_data[3] + user_data[4]
-        if user_games > 0:
-            win_rate = (
-                (user_data[2] / (user_data[2] + user_data[3])) * 100
-                if (user_data[2] + user_data[3]) > 0
-                else 0
-            )
-            user_stats = f"**{user_data[1]:.0f} ELO** | {user_data[2]}W {user_data[3]}L {user_data[4]}D ({win_rate:.1f}%)"
-        else:
-            user_stats = f"**{user_data[1]:.0f} ELO** | No games played"
-
-        if user_rank:
-            embed.add_field(
-                name=f"\nYour Rank: #{user_rank} of {total_players}",
-                value=user_stats,
-                inline=False,
-            )
-    elif not role or (role and ctx.author.id in [m.id for m in role.members]):
-
-        if not role or (role and role in ctx.author.roles):
-            embed.add_field(
-                name="\nYou're not registered!",
-                value="Use `$register` to join the leaderboard",
-                inline=False,
-            )
+    # Your footer
+    if you:
+        embed.set_footer(text=f"Your rank: {user_rank} / {total_players}")
+    else:
+        embed.set_footer(text="Use $register to join the leaderboard")
 
     await ctx.send(embed=embed)
-
 
 @bot.command(name="signup")
 async def signup_player(ctx):
@@ -934,160 +924,147 @@ async def show_groupleaderboard(ctx, group="own", season="latest"):
 
 @bot.command(name="pairings")
 async def show_pairings(ctx, *, args: str = None):
+
+    import aiosqlite
+    import asyncio
+    import shlex
+
     allowed, error_msg = check_channel(ctx)
     if not allowed:
-        await ctx.send(error_msg)
-        return
+        return await ctx.send(error_msg)
 
-    conn = None
-    try:
-        conn = sqlite3.connect(SQLITEFILE)
-        c = conn.cursor()
-
-        c.execute("SELECT season_number FROM seasons WHERE active=1")
-        season_result = c.fetchone()
-        current_season = season_result[0] if season_result else None
-
-        if not args:
-
-            if not current_season:
-                await ctx.send("❌ No active season!")
-                return
-
-            player_id = ctx.author.id
-            c.execute(
-                """SELECT group_name
-                         FROM pairings
-                         WHERE season_number = ?
-                           AND (player1_id = ? OR player2_id = ?) LIMIT 1""",
-                (current_season, player_id, player_id),
-            )
-            group_result = c.fetchone()
-
-            if not group_result:
-                await ctx.send("❌ You are not in any group for the current season!")
-                return
-
-            group_name = group_result[0]
-            season = current_season
-            title = f"Your Group Pairings - Season {season}"
-
+    if args:
+        try:
+            parts = shlex.split(args)
+        except ValueError:
+            parts = args.split()
+        if parts[0].isdigit():
+            season = int(parts[0])
+            group_name = " ".join(parts[1:]) if len(parts) > 1 else None
         else:
-
-            try:
-                parts = shlex.split(args)
-            except:
-                parts = args.split()
-
             season = None
-            group_name = None
+            group_name = " ".join(parts)
+    else:
+        season = None
+        group_name = None
 
-            if parts[0].isdigit():
-                season = int(parts[0])
-                group_name = " ".join(parts[1:]) if len(parts) > 1 else None
-            else:
-                group_name = " ".join(parts)
-                season = current_season
+    async with aiosqlite.connect(SQLITEFILE) as conn:
+        conn.row_factory = aiosqlite.Row
 
-            if season:
-                c.execute("SELECT 1 FROM seasons WHERE season_number=?", (season,))
-                if not c.fetchone():
-                    await ctx.send(f"❌ Season {season} doesn't exist!")
-                    return
+        # 3a. determine active season if none passed
+        if season is None:
+            cur = await conn.execute("SELECT season_number FROM seasons WHERE active=1")
+            row = await cur.fetchone(); await cur.close()
+            season = row["season_number"] if row else None
+            if season is None:
+                return await ctx.send("❌ No active season!")
 
-            if group_name:
-                c.execute(
-                    """SELECT DISTINCT group_name
-                             FROM pairings
-                             WHERE season_number = ?""",
-                    (season,),
-                )
-                valid_groups = [row[0].lower() for row in c.fetchall()]
+        # 3b. ensure season exists
+        cur = await conn.execute("SELECT 1 FROM seasons WHERE season_number=?", (season,))
+        if not await cur.fetchone():
+            await cur.close()
+            return await ctx.send(f"❌ Season {season} doesn't exist!")
+        await cur.close()
 
-                if group_name.lower() not in valid_groups:
-                    suggestions = [g for g in valid_groups if group_name.lower() in g]
-                    msg = f"❌ Group '{group_name}' not found in season {season}!"
-                    if suggestions:
-                        msg += f"\nDid you mean: {', '.join(suggestions[:3])}?"
-                    await ctx.send(msg)
-                    return
-
-            title = f"Pairings - Season {season}" + (
-                f", {group_name}" if group_name else ""
+        # 3c. find user’s group if none passed
+        if group_name is None:
+            player_id = ctx.author.id
+            cur = await conn.execute(
+                "SELECT group_name FROM pairings WHERE season_number=? AND (player1_id=? OR player2_id=?) LIMIT 1",
+                (season, player_id, player_id)
             )
+            grp = await cur.fetchone(); await cur.close()
+            if not grp:
+                return await ctx.send("❌ You are not in any group for the current season!")
+            group_name = grp["group_name"]
 
-        query = """SELECT player1_id, player2_id, result1, result2
-                   FROM pairings
-                   WHERE season_number = ?"""
-        params = [season]
-
+        # 3d. validate group_name spelling
         if group_name:
-            query += " AND LOWER(group_name)=LOWER(?)"
-            params.append(group_name.strip())
-
-        query += " ORDER BY id"
-        c.execute(query, params)
-        pairings = c.fetchall()
-
-        if not pairings:
-            await ctx.send(
-                f"❌ No pairings found for {'season ' + str(season) if season else ''}{' group ' + group_name if group_name else ''}!"
+            cur = await conn.execute(
+                "SELECT DISTINCT group_name FROM pairings WHERE season_number=?", (season,)
             )
-            return
+            valid = [r["group_name"].lower() for r in await cur.fetchall()]
+            await cur.close()
+            if group_name.lower() not in valid:
+                sugg = [g for g in valid if group_name.lower() in g]
+                msg = f"❌ Group '{group_name}' not found in season {season}!"
+                if sugg:
+                    msg += f"\nDid you mean: {', '.join(sugg[:3])}?"
+                return await ctx.send(msg)
 
-        embeds = []
-        current_embed = None
-        char_count = 0
-        MAX_EMBED_CHARS = 4096
+        title = f"Pairings - Season {season}"
+        if group_name:
+            title += f", {group_name}"
 
-        for idx, pairing in enumerate(pairings, 1):
-            p1, p2, r1, r2 = pairing
+        # 3e. grab all pairings rows
+        sql = ("SELECT player1_id, player2_id, result1, result2 "
+               "FROM pairings WHERE season_number=?")
+        params = [season]
+        if group_name:
+            sql += " AND LOWER(group_name)=LOWER(?)"
+            params.append(group_name)
+        sql += " ORDER BY id"
 
-            try:
-                p1_name = (await ctx.guild.fetch_member(p1)).display_name[:20]
-            except:
-                p1_name = f"Player {p1}"
-            try:
-                p2_name = (await ctx.guild.fetch_member(p2)).display_name[:20]
-            except:
-                p2_name = f"Player {p2}"
+        cur = await conn.execute(sql, params)
+        pairings = await cur.fetchall()
+        await cur.close()
 
-            res1 = "Pending" if r1 is None else f"{r1:.1f}"
-            res2 = "Pending" if r2 is None else f"{r2:.1f}"
+    if not pairings:
+        suffix = f", Group {group_name}" if group_name else ""
+        return await ctx.send(f"❌ No pairings found for Season {season}{suffix}!")
 
-            entry = (
-                f"**Match {idx}**\n"
-                f"⚔ {p1_name} vs {p2_name}\n"
-                f"• Game 1: {res1.ljust(7)} • Game 2: {res2}\n\n"
-            )
-            entry_length = len(entry)
+    # 4️⃣ bulk‑resolve Discord names
+    ids = {row["player1_id"] for row in pairings} | {row["player2_id"] for row in pairings}
+    names = {}
+    for uid in ids:
+        m = ctx.guild.get_member(uid)
+        if m:
+            names[uid] = m.display_name[:20]
+    missing = [uid for uid in ids if uid not in names]
+    if missing:
+        fetched = await asyncio.gather(
+            *(ctx.guild.fetch_member(uid) for uid in missing),
+            return_exceptions=True
+        )
+        for res in fetched:
+            if isinstance(res, discord.Member):
+                names[res.id] = res.display_name[:20]
+            else:
+                # fallback on error
+                bad_id = getattr(res, "user_id", None) or None
+                names[bad_id] = f"Player {bad_id}"
 
-            if not current_embed or (char_count + entry_length) > MAX_EMBED_CHARS:
-                if current_embed:
-                    embeds.append(current_embed)
-                current_embed = discord.Embed(color=0x00FF00)
-                current_embed.description = ""
-                char_count = 0
-                page_num = len(embeds) + 1
-                current_embed.title = f"{title} - Page {page_num}"
-
-            current_embed.description += entry
-            char_count += entry_length
-
-        if current_embed:
-            embeds.append(current_embed)
-
-        if len(embeds) == 1:
-            await ctx.send(embed=embeds[0])
+    # 5️⃣ build paged embeds
+    MAX_CHARS = 3800
+    pages, desc = [], ""
+    for i, r in enumerate(pairings, start=1):
+        p1, p2 = r["player1_id"], r["player2_id"]
+        res1 = f"{r['result1']:.1f}" if r["result1"] is not None else "Pending"
+        res2 = f"{r['result2']:.1f}" if r["result2"] is not None else "Pending"
+        entry = (
+            f"**Match {i}**\n"
+            f"⚔ {names[p1]} vs {names[p2]}\n"
+            f"• Game 1: {res1.ljust(7)} • Game 2: {res2}\n\n"
+        )
+        if len(desc) + len(entry) > MAX_CHARS:
+            pages.append(desc)
+            desc = entry
         else:
-            view = PairingsPaginator(embeds, ctx.author)
-            view.message = await ctx.send(embed=embeds[0], view=view)
+            desc += entry
+    if desc:
+        pages.append(desc)
 
-    except Exception as e:
-        await ctx.send(f"❌ Error: {str(e)}")
-    finally:
-        if conn:
-            conn.close()
+    embeds = [
+        discord.Embed(title=f"{title} — Page {idx+1}", description=page, color=0x00FF00)
+        for idx, page in enumerate(pages)
+    ]
+
+    # 6️⃣ send
+    if len(embeds) == 1:
+        await ctx.send(embed=embeds[0])
+    else:
+        view = PairingsPaginator(embeds, ctx.author)
+        view.message = await ctx.send(embed=embeds[0], view=view)
 
 
 @bot.event
