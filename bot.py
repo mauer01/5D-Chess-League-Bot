@@ -1007,6 +1007,7 @@ async def show_groupleaderboard(ctx, group="own", season="latest"):
     embed = discord.Embed(
         title="Rankings", description=f"Ranking of {group} in Season {season}"
     )
+    embed_str = ""
     for i, player in enumerate(leaderboard, 1):
         id = player["id"]
         try:
@@ -1016,17 +1017,12 @@ async def show_groupleaderboard(ctx, group="own", season="latest"):
             name = "Player left Server"
 
         if ctx.author.id == id:
-            embed.add_field(
-                name=f"{i}.",
-                value=f"**Name: {name}**, Score: {player['points']}, SB: {player['sb']}\n",
-                inline=True,
-            )
+            embed_str += f"{i}. **Name: {name}**, Score: {player['points']}, SB: {player['sb']}\n",
+
         else:
-            embed.add_field(
-                name=f"{i}.",
-                value=f"Name: {name}, Score: {player['points']}, SB: {player['sb']}\n",
-                inline=True,
-            )
+            embed_str += f"{i}. Name: {name}, Score: {player['points']}, SB: {player['sb']}\n",
+
+    embed.add_field(name = "", value = embed_str)
     await ctx.send(embed=embed)
 
 
