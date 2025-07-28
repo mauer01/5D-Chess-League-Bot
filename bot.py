@@ -1026,7 +1026,7 @@ async def show_groupleaderboard(ctx, group="own", season="latest"):
             name = "Player left Server"
 
         if ctx.author.id == id:
-            embed_str += f"**{i}. {name}, Score: {player['points']}, {player['sb']}**\n"
+            embed_str += f"**{i}. {name}, Score: {player['points']}, {player['sb']}**"
 
         else:
             embed_str += f"{i}. {name}, Score: {player['points']}, {player['sb']}\n"
