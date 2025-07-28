@@ -1017,10 +1017,10 @@ async def show_groupleaderboard(ctx, group="own", season="latest"):
             name = "Player left Server"
 
         if ctx.author.id == id:
-            embed_str += f"{i}. **Name: {name}**, Score: {player['points']}, SB: {player['sb']}\n",
+            embed_str += f"{i}. **Name: {name}**, Score: {player['points']}, SB: {player['sb']}\n"
 
         else:
-            embed_str += f"{i}. Name: {name}, Score: {player['points']}, SB: {player['sb']}\n",
+            embed_str += f"{i}. Name: {name}, Score: {player['points']}, SB: {player['sb']}\n"
 
     embed.add_field(name = "", value = embed_str)
     await ctx.send(embed=embed)
