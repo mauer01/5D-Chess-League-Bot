@@ -778,8 +778,8 @@ async def show_help(ctx):
             "`$leaderboard [number]` - Show top X players (max 25)\n"
             "`$leaderboard [role name]` - Show leaderboard for a specific role\n"
             "`$leaderboard [number] [role name]` - Combined options\n"
-            "`$groupranking [group name]` - shows the current rankings of the group you are requesting\n"
-            "`$groupranking [group name] [season number]` - Shows the Rankings of the Specific Season"
+            "`$rankings [group name]` - shows the current rankings of the group you are requesting\n"
+            "`$rankings [group name] [season number]` - Shows the Rankings of the Specific Season"
         ),
         inline=False,
     )
@@ -819,7 +819,7 @@ async def show_help(ctx):
             "2. Players sign up with `$signup`\n"
             "3. Players can see pairings with `$pairings`\n"
             "4. Report results with `$rep`\n"
-            "5. Players can see group rankings with `$grouprankings`\n"
+            "5. Players can see group rankings with `$rankings`\n"
             "5. Admin ends season with `$end_season`"
         ),
         inline=False,
@@ -882,7 +882,7 @@ class PairingsPaginator(discord.ui.View):
         await self.message.edit(view=self)
 
 
-@bot.command(name="groupranking")
+@bot.command(name="rankings")
 async def show_groupleaderboard(ctx, group="own", season="latest"):
     allowed, error_msg = check_channel(ctx)
     if not allowed:
