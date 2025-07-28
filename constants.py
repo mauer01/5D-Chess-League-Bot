@@ -124,7 +124,7 @@ DATABASE_STRUCTURE_CREATIONSTRINGMAPPING = {
     },
     "elo_history": {
         "player_id": "INTEGER",
-        "elo_change": "INTEGER",
+        "elo_change": "REAL",
         "timestamp": "DATETIME DEFAULT CURRENT_TIMESTAMP",
         "foreignkeyconstraint": """
                 FOREIGN KEY
