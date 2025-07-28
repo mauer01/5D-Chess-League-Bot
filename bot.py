@@ -1098,7 +1098,7 @@ async def show_pairings(ctx, *, args: str = None):
         # 3d. validate group_name spelling
         if group_name:
 
-            if "procrastination" in group_name.lower() or "lazy" in group.lower():
+            if "procrastination" in group_name.lower() or "lazy" in group_name.lower():
                 group_name = "Pro League"
 
             cur = await conn.execute(
