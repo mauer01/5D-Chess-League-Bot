@@ -1056,6 +1056,10 @@ async def show_pairings(ctx, *, args: str = None):
         if parts[0].isdigit():
             season = int(parts[0])
             group_name = " ".join(parts[1:]) if len(parts) > 1 else None
+
+            if "procrastination" in group_name.lower() or "lazy" in group.lower():
+                group = "Pro League"
+
         else:
             season = None
             group_name = " ".join(parts)
@@ -1083,9 +1087,6 @@ async def show_pairings(ctx, *, args: str = None):
 
         # 3c. find user’s group if none passed
         if group_name is None:
-
-            if "procrastination" in group_name.lower() or "lazy" in group.lower():
-                group = "Pro League"
 
             player_id = ctx.author.id
             cur = await conn.execute(
