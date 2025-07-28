@@ -1083,6 +1083,10 @@ async def show_pairings(ctx, *, args: str = None):
 
         # 3c. find user’s group if none passed
         if group_name is None:
+
+            if "procrastination" in group_name.lower() or "lazy" in group.lower():
+                group = "Pro League"
+
             player_id = ctx.author.id
             cur = await conn.execute(
                 "SELECT group_name FROM pairings WHERE season_number=? AND (player1_id=? OR player2_id=?) LIMIT 1",
