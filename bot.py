@@ -1057,9 +1057,6 @@ async def show_pairings(ctx, *, args: str = None):
             season = int(parts[0])
             group_name = " ".join(parts[1:]) if len(parts) > 1 else None
 
-            if "procrastination" in group_name.lower() or "lazy" in group.lower():
-                group_name = "Pro League"
-
         else:
             season = None
             group_name = " ".join(parts)
@@ -1100,6 +1097,10 @@ async def show_pairings(ctx, *, args: str = None):
 
         # 3d. validate group_name spelling
         if group_name:
+
+            if "procrastination" in group_name.lower() or "lazy" in group.lower():
+                group_name = "Pro League"
+
             cur = await conn.execute(
                 "SELECT DISTINCT group_name FROM pairings WHERE season_number=?", (season,)
             )
