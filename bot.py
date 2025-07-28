@@ -1058,7 +1058,7 @@ async def show_pairings(ctx, *, args: str = None):
             group_name = " ".join(parts[1:]) if len(parts) > 1 else None
 
             if "procrastination" in group_name.lower() or "lazy" in group.lower():
-                group = "Pro League"
+                group_name = "Pro League"
 
         else:
             season = None
