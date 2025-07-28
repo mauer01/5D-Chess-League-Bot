@@ -1000,16 +1000,18 @@ async def show_groupleaderboard(ctx, group="own", season="latest"):
         season = get_latest_season()
     if group == "own":
         group = find_player_group(ctx.author.id, season)
+    if "procrastination" in group.lower() or "lazy" in group.lower():
+        group = "Pro League"
     if not group:
         await ctx.send(f"❌ Couldnt find your given Group in {season}")
         return
     leaderboard = get_group_ranking(season, group)
 
-    if "Advanced" in group:
+    if "advanced" in group.lower():
         color = discord.Color.yellow()
-    elif "Pro" in group:
+    elif "pro" in group.lower():
         color = discord.Color.red()
-    elif "Entry" in group:
+    elif "entry" in group.lower():
         color = discord.Color.blue()
 
     embed = discord.Embed(
