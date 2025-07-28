@@ -105,12 +105,9 @@ def delete_pending_rep(rep_id):
 def update_player_stats(player_id, elo, wins=0, losses=0, draws=0):
     conn = sqlite3.connect(SQLITEFILE)
     c = conn.cursor()
-    c.execute("SELECT elo FROM players where id=?", (player_id,))
-    old_elo = c.fetchone()[0]
-    elochange = elo - old_elo
     c.execute(
         "INSERT INTO elo_history (player_id, elo_change) VALUES (?,?)",
-        (player_id, elochange),
+        (player_id, elo),
     )
     c.execute(
         """UPDATE players
@@ -365,6 +362,29 @@ def update_match_history(match, game, result):
     conn.commit()
 
 
+def find_player_group(player_id, season):
+    conn = sqlite3.connect(SQLITEFILE)
+    c = conn.cursor()
+    c.execute(
+        """
+        SELECT group_name FROM pairings where (player1_id = :player or player2_id = :player) and season_number = :season;
+        """,
+        {"season": season, "player": player_id},
+    )
+    group = c.fetchone()
+    if not group:
+        c.execute(
+            """
+            SELECT league from match_history where (whiteplayer = :player or blackplayer = :player) and REPLACE(UPPER(season), 'SEASON ', '') = :season
+            """,
+            {"season": season, "player": player_id},
+        )
+        group = c.fetchone()
+    if not group:
+        group = ("",)
+    return group[0]
+
+
 def get_specific_pairing(ctx, opponent, c=None):
 
     conn = False
@@ -431,7 +451,7 @@ def get_group_ranking(season, group):
                 FROM match_history
                 WHERE REPLACE(UPPER(season), 'SEASON ', '') = :season;
             """,
-            {"player": player, "season": season},
+            {"player": player, "season": str(season)},
         )
 
         points = c.fetchone()[0]
@@ -453,7 +473,7 @@ def get_group_ranking(season, group):
                     AND REPLACE(UPPER(season), 'SEASON ', '') = :season
                 )
             """,
-            {"player": player, "season": season},
+            {"player": player, "season": str(season)},
         )
         if points == None:
             points = 0
