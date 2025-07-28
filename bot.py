@@ -1004,8 +1004,17 @@ async def show_groupleaderboard(ctx, group="own", season="latest"):
         await ctx.send(f"❌ Couldnt find your given Group in {season}")
         return
     leaderboard = get_group_ranking(season, group)
+
+    if "Advanced" in group:
+        color = discord.Color.yellow()
+    elif "Pro" in group:
+        color = discord.Color.red()
+    elif "Entry" in group:
+        color = discord.Color.blue()
+
     embed = discord.Embed(
-        title="Rankings", description=f"Ranking of {group} in Season {season}"
+        title="Rankings", description=f"Ranking of {group} in Season {season}",
+        color = color
     )
     embed_str = ""
     for i, player in enumerate(leaderboard, 1):
@@ -1017,10 +1026,10 @@ async def show_groupleaderboard(ctx, group="own", season="latest"):
             name = "Player left Server"
 
         if ctx.author.id == id:
-            embed_str += f"{i}. **Name: {name}**, Score: {player['points']}, SB: {player['sb']}\n"
+            embed_str += f"**{i}. {name}, Score: {player['points']}, {player['sb']}**\n"
 
         else:
-            embed_str += f"{i}. Name: {name}, Score: {player['points']}, SB: {player['sb']}\n"
+            embed_str += f"{i}. {name}, Score: {player['points']}, {player['sb']}\n"
 
     embed.add_field(name = "", value = embed_str)
     await ctx.send(embed=embed)
