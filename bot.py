@@ -892,13 +892,25 @@ async def show_groupleaderboard(ctx, group="own", season="latest"):
         season = get_latest_season()
     if group == "own":
         group = find_player_group(ctx.author.id, season)
+    if "procrastination" in group.lower() or "lazy" in group.lower():
+        group = "Pro League"
     if not group:
         await ctx.send(f"❌ Couldnt find your given Group in {season}")
         return
     leaderboard = get_group_ranking(season, group)
+
+    if "advanced" in group.lower():
+        color = discord.Color.yellow()
+    elif "pro" in group.lower():
+        color = discord.Color.red()
+    elif "entry" in group.lower():
+        color = discord.Color.blue()
+
     embed = discord.Embed(
-        title="Rankings", description=f"Ranking of {group} in Season {season}"
+        title="Rankings", description=f"Ranking of {group} in Season {season}",
+        color = color
     )
+    embed_str = ""
     for i, player in enumerate(leaderboard, 1):
         id = player["id"]
         try:
@@ -908,17 +920,12 @@ async def show_groupleaderboard(ctx, group="own", season="latest"):
             name = "Player left Server"
 
         if ctx.author.id == id:
-            embed.add_field(
-                name=f"{i}.",
-                value=f"**Name: {name}**, Score: {player['points']}, SB: {player['sb']}",
-                inline=False,
-            )
+            embed_str += f"**{i}. {name}, Score: {player['points']}, {player['sb']}**"
+
         else:
-            embed.add_field(
-                name=f"{i}.",
-                value=f"Name: {name}, Score: {player['points']}, SB: {player['sb']}",
-                inline=False,
-            )
+            embed_str += f"{i}. {name}, Score: {player['points']}, {player['sb']}\n"
+
+    embed.add_field(name = "", value = embed_str)
     await ctx.send(embed=embed)
 
 
@@ -941,6 +948,7 @@ async def show_pairings(ctx, *, args: str = None):
         if parts[0].isdigit():
             season = int(parts[0])
             group_name = " ".join(parts[1:]) if len(parts) > 1 else None
+
         else:
             season = None
             group_name = " ".join(parts)
@@ -968,6 +976,7 @@ async def show_pairings(ctx, *, args: str = None):
 
         # 3c. find user’s group if none passed
         if group_name is None:
+
             player_id = ctx.author.id
             cur = await conn.execute(
                 "SELECT group_name FROM pairings WHERE season_number=? AND (player1_id=? OR player2_id=?) LIMIT 1",
@@ -980,6 +989,10 @@ async def show_pairings(ctx, *, args: str = None):
 
         # 3d. validate group_name spelling
         if group_name:
+
+            if "procrastination" in group_name.lower() or "lazy" in group_name.lower():
+                group_name = "Pro League"
+
             cur = await conn.execute(
                 "SELECT DISTINCT group_name FROM pairings WHERE season_number=?", (season,)
             )
