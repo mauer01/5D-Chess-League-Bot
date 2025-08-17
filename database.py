@@ -1,17 +1,35 @@
 import asyncio, sqlite3
 from datetime import datetime, timedelta
-
+from pathlib import Path
 import aiosqlite
 from constants import (
     INITIAL_ELO,
-    SQLITEFILE,
 )
 from logic import calculate_sb, get_role_ranges, group_players
 
 
+def getCurrentDBFile():
+    return _sqliteFile
+
+
+def setCurrentDBFile(newFile):
+    global _sqliteFile
+    if newFile == ":memory:":
+        _sqliteFile = ":memory:"
+        return
+    path = Path(newFile)
+    if path.exists():
+        try:
+            _sqliteFile = str(path.relative_to("./"))
+        except ValueError:
+            _sqliteFile = str(path.resolve())
+        return
+    raise FileExistsError("File doesnt Exists")
+
+
 def delete_pending_rep(rep_id):
 
-    conn = sqlite3.connect(SQLITEFILE)
+    conn = sqlite3.connect(_sqliteFile)
     c = conn.cursor()
     c.execute("DELETE FROM pending_reps WHERE id=?", (rep_id,))
     conn.commit()
@@ -19,7 +37,7 @@ def delete_pending_rep(rep_id):
 
 
 def update_player_stats(player_id, elo, wins=0, losses=0, draws=0):
-    conn = sqlite3.connect(SQLITEFILE)
+    conn = sqlite3.connect(_sqliteFile)
     c = conn.cursor()
     c.execute(
         "INSERT INTO elo_history (player_id, elo_change) VALUES (?,?)",
@@ -40,7 +58,7 @@ def update_player_stats(player_id, elo, wins=0, losses=0, draws=0):
 
 
 def get_player_data(player_id):
-    conn = sqlite3.connect(SQLITEFILE)
+    conn = sqlite3.connect(_sqliteFile)
     c = conn.cursor()
     c.execute("SELECT * FROM players WHERE id=?", (player_id,))
     player = c.fetchone()
@@ -51,7 +69,7 @@ def get_player_data(player_id):
 async def clean_old_pending_matches():
     while True:
         try:
-            conn = sqlite3.connect(SQLITEFILE)
+            conn = sqlite3.connect(_sqliteFile)
             c = conn.cursor()
             cutoff_time = datetime.now() - timedelta(minutes=30)
             cutoff_str = cutoff_time.strftime("%Y-%m-%d %H:%M:%S")
@@ -68,7 +86,7 @@ async def clean_old_pending_matches():
 
 async def generate_pairings(ctx, season_number):
     try:
-        conn = sqlite3.connect(SQLITEFILE)
+        conn = sqlite3.connect(_sqliteFile)
         c = conn.cursor()
 
         c.execute(
@@ -158,7 +176,7 @@ async def generate_pairings(ctx, season_number):
 
 
 def add_pending_rep(reporter_id, opponent_id, reporter_result):
-    conn = sqlite3.connect(SQLITEFILE)
+    conn = sqlite3.connect(_sqliteFile)
     c = conn.cursor()
     c.execute(
         """INSERT INTO pending_reps (reporter_id, opponent_id, reporter_result)
@@ -170,7 +188,7 @@ def add_pending_rep(reporter_id, opponent_id, reporter_result):
 
 
 async def find_pairings_in_db(player_id, season, group_name):
-    async with aiosqlite.connect(SQLITEFILE) as conn:
+    async with aiosqlite.connect(_sqliteFile) as conn:
         conn.row_factory = aiosqlite.Row
 
         if season is None:
@@ -238,7 +256,7 @@ async def find_pairings_in_db(player_id, season, group_name):
 
 
 def get_pending_rep(reporter_id, pairing_id):
-    conn = sqlite3.connect(SQLITEFILE)
+    conn = sqlite3.connect(_sqliteFile)
     c = conn.cursor()
     cutoff_time = datetime.now() - timedelta(minutes=30)
     cutoff_str = cutoff_time.strftime("%Y-%m-%d %H:%M:%S")
@@ -257,14 +275,14 @@ def get_pending_rep(reporter_id, pairing_id):
 
 
 def update_season_game(match, game, result):
-    conn = sqlite3.connect(SQLITEFILE)
+    conn = sqlite3.connect(_sqliteFile)
     if game not in [1, 2]:
         return "", "wrong game number"
     c = conn.cursor()
     c.execute(
         """
             UPDATE pairings
-            SET {game} = :new_result
+            SET result{game} = :new_result
             WHERE id = :pairing_id
         """,
         {"new_result": result, "pairing_id": match},
@@ -274,7 +292,7 @@ def update_season_game(match, game, result):
 
 
 def update_match_history(match, game, result):
-    conn = sqlite3.connect(SQLITEFILE)
+    conn = sqlite3.connect(_sqliteFile)
     c = conn.cursor()
     c.execute(
         """
@@ -318,7 +336,7 @@ def update_match_history(match, game, result):
 
 
 def find_player_group(player_id, season):
-    conn = sqlite3.connect(SQLITEFILE)
+    conn = sqlite3.connect(_sqliteFile)
     c = conn.cursor()
     c.execute(
         """
@@ -342,7 +360,7 @@ def find_player_group(player_id, season):
 
 def get_specific_pairing(player_id: int, oppoent_id: int, c=None):
 
-    conn = sqlite3.connect(SQLITEFILE)
+    conn = sqlite3.connect(_sqliteFile)
     c = conn.cursor()
     c.execute(
         """SELECT id, player1_id, player2_id, result1, result2
@@ -374,7 +392,7 @@ def get_group_ranking(season, group):
             AND (league = :group OR league = REPLACE(:group, '-A', '-1') OR league = REPLACE(:group, '-B', '-2') OR league = REPLACE(:group, '-C', '-3') OR league = REPLACE(:group, '-D', '-4'))
         """
 
-    conn = sqlite3.connect(SQLITEFILE)
+    conn = sqlite3.connect(_sqliteFile)
     c = conn.cursor()
     c.execute("SELECT active FROM seasons WHERE season_number = ?", (season,))
     if c.fetchone():
@@ -439,7 +457,7 @@ def get_group_ranking(season, group):
 
 
 def get_latest_season():
-    conn = sqlite3.connect(SQLITEFILE)
+    conn = sqlite3.connect(_sqliteFile)
     c = conn.cursor()
     c.execute(
         "SELECT season_number,active FROM seasons ORDER BY season_number DESC LIMIT 1"
@@ -450,7 +468,7 @@ def get_latest_season():
 
 
 def register_new_player(player_id):
-    conn = sqlite3.connect(SQLITEFILE)
+    conn = sqlite3.connect(_sqliteFile)
     c = conn.cursor()
     c.execute("INSERT INTO players (id, elo) VALUES (?, ?)", (player_id, INITIAL_ELO))
     conn.commit()
@@ -458,7 +476,7 @@ def register_new_player(player_id):
 
 
 def sign_up_player(player_id):
-    conn = sqlite3.connect(SQLITEFILE)
+    conn = sqlite3.connect(_sqliteFile)
     c = conn.cursor()
     c.execute("UPDATE players SET signed_up=1 WHERE id=?", (player_id,))
     conn.commit()
@@ -466,7 +484,7 @@ def sign_up_player(player_id):
 
 
 def find_signed_players():
-    conn = sqlite3.connect(SQLITEFILE)
+    conn = sqlite3.connect(_sqliteFile)
     c = conn.cursor()
     c.execute("SELECT id, elo FROM players WHERE signed_up=1")
     players = c.fetchall()
@@ -475,7 +493,7 @@ def find_signed_players():
 
 
 def update_missed_seasons():
-    conn = sqlite3.connect(SQLITEFILE)
+    conn = sqlite3.connect(_sqliteFile)
     c = conn.cursor()
     c.execute("UPDATE players SET seasons_missed = 0 WHERE signed_up = 1")
     c.execute(
@@ -486,7 +504,7 @@ def update_missed_seasons():
 
 
 def find_unsigned_players():
-    conn = sqlite3.connect(SQLITEFILE)
+    conn = sqlite3.connect(_sqliteFile)
     c = conn.cursor()
     c.execute("SELECT id, elo, seasons_missed FROM players WHERE signed_up=0")
     n_players = c.fetchall()
@@ -509,7 +527,7 @@ def punish_player(player_id, elo, missed_seasons):
 
 
 def setup_future_season(old_season, new_season):
-    conn = sqlite3.connect(SQLITEFILE)
+    conn = sqlite3.connect(_sqliteFile)
     c = conn.cursor()
     c.execute("UPDATE players SET signed_up=0")
     c.execute(
@@ -522,7 +540,7 @@ def setup_future_season(old_season, new_season):
 
 
 def activate_season(current_season):
-    conn = sqlite3.connect(SQLITEFILE)
+    conn = sqlite3.connect(_sqliteFile)
     c = conn.cursor()
     c.execute("UPDATE seasons SET active=1 WHERE season_number=?", (current_season,))
     conn.commit()
@@ -530,7 +548,7 @@ def activate_season(current_season):
 
 
 async def bundle_leaderboard(player_id, limit, member_ids):
-    async with aiosqlite.connect(SQLITEFILE) as conn:
+    async with aiosqlite.connect(_sqliteFile) as conn:
         conn.row_factory = aiosqlite.Row
 
         # 3a. total players (for “of X” in footer)
@@ -601,7 +619,7 @@ async def bundle_leaderboard(player_id, limit, member_ids):
 
 
 def add_and_resolve_report(author_id, opponent_id, game_number, result):
-    conn = sqlite3.connect(SQLITEFILE)
+    conn = sqlite3.connect(_sqliteFile)
     c = conn.cursor()
     new_rep = False
 

@@ -3,7 +3,7 @@ from datetime import datetime
 import discord
 from discord.ext import commands
 import math, csv, os, shlex
-from constants import INITIAL_ELO, ROLES_CONFIG_FILE, SQLITEFILE
+from constants import INITIAL_ELO, ROLES_CONFIG_FILE
 from database import (
     activate_season,
     bundle_leaderboard,
@@ -11,6 +11,7 @@ from database import (
     find_pairings_in_db,
     find_player_group,
     add_and_resolve_report,
+    getCurrentDBFile,
     setup_future_season,
     delete_pending_rep,
     find_unsigned_players,
@@ -395,7 +396,7 @@ async def backup_db(ctx):
     channel = bot.get_channel(BACKUP_CHANNEL_ID)
     await channel.send(
         f"BackUP: <t:{math.floor(datetime.now().timestamp())}>",
-        file=discord.File(SQLITEFILE),
+        file=discord.File(getCurrentDBFile()),
     )
 
 

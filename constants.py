@@ -1,5 +1,5 @@
 ROLES_CONFIG_FILE = "elo_roles.csv"
-SQLITEFILE = "elo_bot.db"
+
 K_FACTOR = 25
 INITIAL_ELO = 1380
 
