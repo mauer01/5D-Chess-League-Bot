@@ -4,7 +4,6 @@ import shutil
 from constants import (
     DATABASE_STRUCTURE,
     DATABASE_STRUCTURE_CREATIONSTRINGMAPPING,
-    SQLITEFILE,
 )
 
 
@@ -93,9 +92,10 @@ def _build_table_string(table):
     return sqlstring
 
 
-def repair_db(reduced_missing, reduced_extra):
-    conn = sqlite3.connect(SQLITEFILE)
-    shutil.copy(SQLITEFILE, f"backup/{datetime.now().timestamp()}_{SQLITEFILE}")
+def repair_db(reduced_missing, reduced_extra, file, backup):
+    conn = sqlite3.connect(file)
+    if backup:
+        shutil.copy(file, f"backup/{datetime.now().timestamp()}_{file}")
     for missed in reduced_missing:
         c = conn.cursor()
         table = missed["table"]
@@ -143,21 +143,23 @@ def _reduce(list):
     return reduced_list
 
 
-def init_db():
-    missing, extra, wrong_type = check_database_structure(SQLITEFILE)
+def init_db(file, backup=True):
+    missing, extra, wrong_type = check_database_structure(file)
 
     reduced_missing, reduced_extra = _reduce(missing), _reduce(extra)
     if not os.path.exists("backup"):
         os.makedirs("backup")
     if len(missing) + len(extra) > 0:
-        repair_db(reduced_missing, reduced_extra)
+        repair_db(reduced_missing, reduced_extra, file, backup)
     if len(wrong_type) > 0:
         print(wrong_type)
         if input(
             "wrong prefered column types detected do you want to repair typestructure(yes/NO):"
         ).lower() in ["y", "yes"]:
-            conn = sqlite3.connect(SQLITEFILE)
-            shutil.copy(SQLITEFILE, f"backup/{datetime.now().timestamp()}_{SQLITEFILE}")
+            conn = sqlite3.connect(file)
+            if backup:
+                shutil.copy(file, f"backup/{datetime.now().timestamp()}_{file}")
+            shutil.copy(file, f"backup/{datetime.now().timestamp()}_{file}")
             c = conn.cursor()
             for table in list({entry["table"] for entry in wrong_type}):
                 c.execute(f"ALTER TABLE {table} RENAME TO old_{table}")
